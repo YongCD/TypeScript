@@ -513,3 +513,718 @@ function processInput(input: unknown) {
 }
 ```
 
+# 5 接口（Interface）详解
+
+## 5.1 接口基础概念
+
+接口是 TypeScript 中一个核心概念，用于定义对象的结构和类型。接口定义了对象应该具有的属性和方法，但不提供实现。
+
+```typescript
+// 基础接口定义
+interface Person {
+  name: string;
+  age: number;
+}
+
+// 使用接口
+const alice: Person = {
+  name: "Alice",
+  age: 30
+};
+
+// 以下代码会报错，因为缺少必须的属性
+// const bob: Person = {
+//   name: "Bob"
+// };
+
+// 以下代码会报错，因为包含未在接口中声明的属性
+// const charlie: Person = {
+//   name: "Charlie",
+//   age: 25,
+//   address: "123 Main St" // 多余的属性
+// };
+```
+
+## 5.2 可选属性和只读属性
+
+### 5.2.1 可选属性
+
+使用问号（?）标记属性为可选的。
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email?: string; // 可选属性
+  phone?: string; // 可选属性
+}
+
+// 有效，email是可选的
+const user1: User = {
+  id: 1,
+  name: "User One"
+};
+
+// 有效，提供了可选属性
+const user2: User = {
+  id: 2,
+  name: "User Two",
+  email: "user2@example.com"
+};
+```
+
+### 5.2.2 只读属性
+
+使用 readonly 关键字使属性只能在创建时被赋值。
+
+```typescript
+interface Config {
+  readonly apiKey: string;
+  readonly apiUrl: string;
+  timeout?: number;
+}
+
+const config: Config = {
+  apiKey: "abc123",
+  apiUrl: "https://api.example.com"
+};
+
+// 以下代码会报错，因为apiKey是只读的
+// config.apiKey = "xyz456";
+
+// 可以修改非只读的可选属性
+config.timeout = 3000;
+```
+
+## 5.3 接口的属性检查绕过
+
+TypeScript 对接口有"严格属性检查"，但有几种方法可以绕过这种检查：
+
+```typescript
+interface SubmitFormData {
+  name: string;
+  email: string;
+}
+
+// 方式1: 使用类型断言
+const data1 = {
+  name: "Alice",
+  email: "alice@example.com",
+  extraField: true
+} as SubmitFormData; // 类型断言绕过多余属性检查
+
+// 方式2: 使用中间变量
+const rawData = {
+  name: "Bob",
+  email: "bob@example.com",
+  extraField: 123
+};
+const data2: SubmitFormData = rawData; // 变量赋值绕过检查
+
+// 方式3: 使用索引签名（推荐方式）
+interface FlexibleFormData {
+  name: string;
+  email: string;
+  [key: string]: any; // 索引签名允许任意额外属性
+}
+
+const data3: FlexibleFormData = {
+  name: "Charlie",
+  email: "charlie@example.com",
+  extraField1: true,
+  extraField2: 123
+};
+```
+
+## 5.4 接口的方法
+
+接口可以包含方法定义：
+
+```typescript
+interface Calculator {
+  add(x: number, y: number): number;
+  subtract(x: number, y: number): number;
+  multiply?(x: number, y: number): number; // 可选方法
+}
+
+// 实现接口方法
+const basicCalculator: Calculator = {
+  add(x, y) {
+    return x + y;
+  },
+  subtract(x, y) {
+    return x - y;
+  }
+};
+
+// 完整实现
+const advancedCalculator: Calculator = {
+  add(x, y) {
+    return x + y;
+  },
+  subtract(x, y) {
+    return x - y;
+  },
+  multiply(x, y) {
+    return x * y;
+  }
+};
+```
+
+## 5.5 函数类型接口
+
+接口可以描述函数类型：
+
+```typescript
+// 函数接口定义
+interface SearchFunction {
+  (source: string, subString: string): boolean;
+}
+
+// 实现函数接口
+const searchString: SearchFunction = function(src, sub) {
+  return src.includes(sub);
+};
+
+console.log(searchString("Hello world", "world")); // 输出 true
+```
+
+## 5.6 索引类型接口
+
+接口可以描述"可索引"的类型，如数组或对象：
+
+```typescript
+// 数组索引接口
+interface StringArray {
+  [index: number]: string;
+}
+
+const myArray: StringArray = ["Bob", "Alice", "Eve"];
+const firstItem: string = myArray[0]; // "Bob"
+
+// 对象索引接口
+interface Dictionary {
+  [key: string]: string | number;
+}
+
+const dict: Dictionary = {
+  name: "John",
+  age: 30,
+  city: "New York"
+};
+```
+
+## 5.7 接口继承
+
+接口可以通过 extends 关键字继承其他接口的属性和方法：
+
+```typescript
+// 基础接口
+interface Shape {
+  color: string;
+}
+
+// 继承单个接口
+interface Square extends Shape {
+  sideLength: number;
+}
+
+const square: Square = {
+  color: "blue",
+  sideLength: 10
+};
+
+// 继承多个接口
+interface Circle extends Shape {
+  radius: number;
+}
+
+interface Colorful {
+  borderColor: string;
+}
+
+// 多重继承
+interface ColorfulCircle extends Circle, Colorful {
+  fillOpacity: number;
+}
+
+const circle: ColorfulCircle = {
+  color: "red",
+  radius: 15,
+  borderColor: "black",
+  fillOpacity: 0.5
+};
+```
+
+## 5.8 类实现接口
+
+接口可以被类实现，确保类包含特定的属性和方法：
+
+```typescript
+interface Vehicle {
+  brand: string;
+  speed: number;
+  accelerate(speed: number): void;
+  brake(): void;
+}
+
+class Car implements Vehicle {
+  // 实现接口的属性
+  brand: string;
+  speed: number = 0;
+  
+  constructor(brand: string) {
+    this.brand = brand;
+  }
+  
+  // 实现接口的方法
+  accelerate(amount: number): void {
+    this.speed += amount;
+    console.log(`${this.brand} accelerating to ${this.speed}mph`);
+  }
+  
+  brake(): void {
+    this.speed = 0;
+    console.log(`${this.brand} stopped`);
+  }
+  
+  // 类可以有额外的方法
+  honk(): void {
+    console.log("Beep beep!");
+  }
+}
+
+const myCar = new Car("Toyota");
+myCar.accelerate(30);  // Toyota accelerating to 30mph
+myCar.brake();         // Toyota stopped
+myCar.honk();          // Beep beep!
+
+// 一个类可以实现多个接口
+interface Lockable {
+  lock(): void;
+  unlock(): void;
+  isLocked: boolean;
+}
+
+class SecureCar extends Car implements Lockable {
+  isLocked: boolean = false;
+  
+  lock(): void {
+    this.isLocked = true;
+    console.log(`${this.brand} is now locked`);
+  }
+  
+  unlock(): void {
+    this.isLocked = false;
+    console.log(`${this.brand} is unlocked`);
+  }
+}
+```
+
+## 5.9 接口合并
+
+TypeScript 允许声明同名接口，它们会自动合并：
+
+```typescript
+// 第一个接口声明
+interface API {
+  getUsers(): Promise<string[]>;
+}
+
+// 第二个接口声明（会与第一个合并）
+interface API {
+  getPosts(): Promise<string[]>;
+}
+
+// 使用合并后的接口
+const api: API = {
+  getUsers: async () => ["user1", "user2"],
+  getPosts: async () => ["post1", "post2"]
+};
+
+// 合并接口时的注意事项
+interface Box {
+  height: number;
+  width: number;
+  // color: string;  // 假设后面会定义
+}
+
+interface Box {
+  scale: number;
+  color: string;  // 提供之前声明的类型
+}
+
+// 最终的Box接口包含所有属性
+const box: Box = {
+  height: 10,
+  width: 20,
+  scale: 2,
+  color: "red"
+};
+```
+
+## 5.10 接口与类型别名(type)的区别
+
+TypeScript 中，接口（interface）和类型别名（type）有很多相似之处，但也有一些关键区别：
+
+```typescript
+// 接口定义
+interface Person {
+  name: string;
+  age: number;
+}
+
+// 等效的类型别名
+type PersonType = {
+  name: string;
+  age: number;
+};
+
+// 相似点：两者都可以扩展
+interface Animal {
+  name: string;
+}
+
+interface Dog extends Animal {
+  breed: string;
+}
+
+// 类型别名的扩展
+type AnimalType = {
+  name: string;
+};
+
+type DogType = AnimalType & {
+  breed: string;
+};
+
+// 区别1: 接口可以被合并，类型别名不行
+interface API {
+  get(): void;
+}
+interface API {
+  post(): void;
+}
+// API 现在有 get 和 post 方法
+
+// 区别2: 类型别名可以用于其他类型，而不仅仅是对象
+type ID = string | number;
+type Callback = (data: string) => void;
+type Pair<T> = [T, T];
+type TreeNode<T> = {
+  value: T;
+  left?: TreeNode<T>;
+  right?: TreeNode<T>;
+};
+
+// 区别3: 类实现时的差异
+interface Clickable {
+  click(): void;
+}
+
+class Button implements Clickable {
+  click() {
+    console.log("Button clicked");
+  }
+}
+
+// 接口的优势：在大型项目中更容易进行声明合并
+// 类型别名的优势：可以表达更复杂的类型组合
+```
+
+## 5.11 接口的实际应用场景
+
+### 5.11.1 API 类型定义
+
+```typescript
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  createdAt: Date;
+}
+
+interface CreateUserRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+}
+
+interface UserResponse {
+  id: number;
+  username: string;
+  email: string;
+  createdAt: string; // API返回的是字符串格式的日期
+}
+
+// 在API函数中使用这些接口
+async function fetchUsers(): Promise<UserResponse[]> {
+  const response = await fetch('/api/users');
+  return response.json();
+}
+
+async function createUser(user: CreateUserRequest): Promise<UserResponse> {
+  const response = await fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user)
+  });
+  return response.json();
+}
+```
+
+### 5.11.2 组件 Props 定义
+
+```typescript
+// React组件的Props接口
+interface ButtonProps {
+  text: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'danger';
+  size?: 'small' | 'medium' | 'large';
+}
+
+// 在组件中使用
+function Button(props: ButtonProps) {
+  const { text, onClick, disabled = false, variant = 'primary', size = 'medium' } = props;
+  
+  return (
+    <button 
+      onClick={onClick}
+      disabled={disabled}
+      className={`btn btn-${variant} btn-${size}`}
+    >
+      {text}
+    </button>
+  );
+}
+```
+
+### 5.11.3 配置对象
+
+```typescript
+interface DatabaseConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+  ssl?: boolean;
+  connectionTimeoutMs?: number;
+}
+
+interface AppConfig {
+  environment: 'development' | 'staging' | 'production';
+  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  server: {
+    port: number;
+    host: string;
+  };
+  database: DatabaseConfig;
+}
+
+// 使用配置接口
+function initializeApp(config: AppConfig) {
+  // 使用配置初始化应用
+  const { environment, logLevel, server, database } = config;
+  
+  console.log(`Starting app in ${environment} mode`);
+  console.log(`Server listening on ${server.host}:${server.port}`);
+  
+  // 连接数据库
+  connectToDatabase(database);
+}
+```
+
+### 5.11.4 策略模式实现
+
+```typescript
+interface PaymentProcessor {
+  processPayment(amount: number): Promise<boolean>;
+  refund(paymentId: string, amount: number): Promise<boolean>;
+  getBalance(): Promise<number>;
+}
+
+// 实现不同的支付处理器
+class StripePaymentProcessor implements PaymentProcessor {
+  async processPayment(amount: number): Promise<boolean> {
+    console.log(`Processing ${amount} via Stripe`);
+    // 调用Stripe API进行处理
+    return true;
+  }
+  
+  async refund(paymentId: string, amount: number): Promise<boolean> {
+    console.log(`Refunding ${amount} for payment ${paymentId} via Stripe`);
+    return true;
+  }
+  
+  async getBalance(): Promise<number> {
+    // 获取Stripe账户余额
+    return 1000;
+  }
+}
+
+class PayPalPaymentProcessor implements PaymentProcessor {
+  async processPayment(amount: number): Promise<boolean> {
+    console.log(`Processing ${amount} via PayPal`);
+    // 调用PayPal API进行处理
+    return true;
+  }
+  
+  async refund(paymentId: string, amount: number): Promise<boolean> {
+    console.log(`Refunding ${amount} for payment ${paymentId} via PayPal`);
+    return true;
+  }
+  
+  async getBalance(): Promise<number> {
+    // 获取PayPal账户余额
+    return 2000;
+  }
+}
+
+// 使用支付处理器接口
+class PaymentService {
+  private processor: PaymentProcessor;
+  
+  constructor(processor: PaymentProcessor) {
+    this.processor = processor;
+  }
+  
+  async makePayment(amount: number): Promise<boolean> {
+    // 验证余额
+    const balance = await this.processor.getBalance();
+    if (balance < amount) {
+      return false;
+    }
+    
+    // 处理付款
+    return this.processor.processPayment(amount);
+  }
+  
+  changeProcessor(processor: PaymentProcessor): void {
+    this.processor = processor;
+  }
+}
+
+// 使用示例
+const stripeProcessor = new StripePaymentProcessor();
+const paypalProcessor = new PayPalPaymentProcessor();
+
+const paymentService = new PaymentService(stripeProcessor);
+paymentService.makePayment(500);  // 使用Stripe处理付款
+
+// 切换到PayPal
+paymentService.changeProcessor(paypalProcessor);
+paymentService.makePayment(300);  // 使用PayPal处理付款
+```
+
+### 5.11.5 泛型接口
+
+```typescript
+// 泛型接口定义
+interface Repository<T> {
+  findAll(): Promise<T[]>;
+  findById(id: string): Promise<T | null>;
+  create(item: Omit<T, 'id'>): Promise<T>;
+  update(id: string, item: Partial<T>): Promise<T | null>;
+  delete(id: string): Promise<boolean>;
+}
+
+// 具体实体
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+}
+
+// 实现泛型接口
+class ProductRepository implements Repository<Product> {
+  private products: Product[] = [];
+  
+  async findAll(): Promise<Product[]> {
+    return this.products;
+  }
+  
+  async findById(id: string): Promise<Product | null> {
+    const product = this.products.find(p => p.id === id);
+    return product || null;
+  }
+  
+  async create(item: Omit<Product, 'id'>): Promise<Product> {
+    const product = {
+      ...item,
+      id: Date.now().toString()
+    };
+    this.products.push(product);
+    return product;
+  }
+  
+  async update(id: string, item: Partial<Product>): Promise<Product | null> {
+    const index = this.products.findIndex(p => p.id === id);
+    if (index === -1) return null;
+    
+    this.products[index] = {
+      ...this.products[index],
+      ...item
+    };
+    
+    return this.products[index];
+  }
+  
+  async delete(id: string): Promise<boolean> {
+    const initialLength = this.products.length;
+    this.products = this.products.filter(p => p.id !== id);
+    return initialLength > this.products.length;
+  }
+}
+
+// 使用该仓库
+const productRepo = new ProductRepository();
+productRepo.create({ name: "Laptop", price: 1299, category: "Electronics" });
+```
+
+## 5.12 接口声明合并的高级用法
+
+```typescript
+// 为第三方库扩展接口
+declare global {
+  interface String {
+    capitalize(): string;
+  }
+}
+
+// 实现扩展的接口
+String.prototype.capitalize = function() {
+  return this.charAt(0).toUpperCase() + this.slice(1);
+};
+
+// 现在可以在任何字符串上使用这个方法
+const greeting = "hello world";
+console.log(greeting.capitalize()); // "Hello world"
+
+// 为模块扩展接口
+declare module 'express' {
+  interface Request {
+    currentUser?: {
+      id: string;
+      username: string;
+      roles: string[];
+    };
+  }
+}
+
+// 这样在Express请求处理中可以安全地访问currentUser
+// app.get('/profile', (req, res) => {
+//   const user = req.currentUser;
+//   // TypeScript 知道 user 可能是 undefined 或有 id, username, roles
+// });
+```
+
+通过以上详细讲解，你应该对 TypeScript 接口有了全面的了解，包括其基本用法、高级特性以及实际应用场景。接口是 TypeScript 中非常强大的工具，能帮助你定义代码的结构和契约，提高代码的可读性和可维护性。

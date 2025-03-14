@@ -23,7 +23,7 @@ class MyAudit {
           id: 1,
           events: '购买办公用品',
           time: new Date(),
-          enumAuditStatus: AuditStatus.MANAGER_AUDIT_SUCCESS
+          enumAuditStatus: status
         }
         console.log(expense);
         break;
