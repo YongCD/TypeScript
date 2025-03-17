@@ -1,474 +1,3 @@
-# 13 tsconfig.json 核心配置详解
-
-`tsconfig.json` 文件是 TypeScript 项目的配置文件，它指定了编译 TypeScript 文件的根文件和编译选项。本章将详细介绍 tsconfig.json 的核心配置和常见用法，帮助你充分利用 TypeScript 的强大功能。
-
-## 13.1 tsconfig.json 的作用与基础知识
-
-`tsconfig.json` 文件有以下几个主要作用：
-
-1. **指定编译选项**：确定如何将 TypeScript 代码转换为 JavaScript
-2. **定义项目上下文**：指定哪些文件是项目的一部分
-3. **启用项目特定功能**：如严格类型检查、装饰器支持等
-4. **配置模块解析**：决定如何查找和加载导入的模块
-5. **提供编辑器支持**：为 VS Code 等编辑器提供智能提示和类型检查
-
-### 创建 tsconfig.json
-
-可以通过以下方式生成基础的 tsconfig.json 文件：
-
-```bash
-npx tsc --init
-```
-
-### 基本结构
-
-一个基本的 tsconfig.json 文件结构如下：
-
-```json
-{
-  "compilerOptions": {
-    // 编译器选项
-  },
-  "include": [
-    // 要包含的文件
-  ],
-  "exclude": [
-    // 要排除的文件
-  ],
-  "files": [
-    // 明确指定的文件
-  ],
-  "extends": "基础配置路径",
-  "references": [
-    // 项目引用
-  ]
-}
-```
-
-## 13.2 compilerOptions 核心配置详解
-
-`compilerOptions` 是 tsconfig.json 中最重要的部分，它控制 TypeScript 编译器的行为。以下是关键配置选项：
-
-### 13.2.1 目标 ECMAScript 版本与模块系统
-
-```json
-{
-  "compilerOptions": {
-    "target": "es2016", // 编译目标 ES 版本
-    "module": "commonjs", // 模块系统
-    "lib": ["dom", "es2016"], // 包含的库定义文件
-    "moduleResolution": "node", // 模块解析策略
-    "esModuleInterop": true, // 启用 ES 模块互操作性
-    "resolveJsonModule": true // 允许导入 JSON 模块
-  }
-}
-```
-
-- **target**: 指定生成的 JavaScript 的 ECMAScript 目标版本
-  - 常见值：`es5`, `es6`/`es2015`, `es2016`, `es2017`, `es2018`, `es2019`, `es2020`, `es2021`, `es2022`, `esnext`
-  - 影响：更高版本允许使用更新的 JavaScript 特性，但可能不兼容旧浏览器
-
-- **module**: 指定生成的模块系统
-  - 常见值：`commonjs`, `umd`, `amd`, `es6`/`es2015`, `esnext`, `node16`, `nodenext`
-  - 影响：决定编译后的代码如何组织模块
-
-- **lib**: 指定需要包含的库文件
-  - 常见值组合：`["dom", "es2016"]`, `["es6", "dom", "dom.iterable", "scripthost"]`
-  - 影响：控制可用的内置类型定义（如 Array, Promise, DOM API 等）
-
-- **moduleResolution**: 指定模块解析策略
-  - 常见值：`node`, `classic`, `node16`, `nodenext`, `bundler`
-  - 影响：决定如何解析导入语句中的模块
-
-### 13.2.2 严格类型检查选项
-
-```json
-{
-  "compilerOptions": {
-    "strict": true, // 启用所有严格类型检查选项
-    "noImplicitAny": true, // 禁止隐式 any 类型
-    "strictNullChecks": true, // 严格的 null 检查
-    "strictFunctionTypes": true, // 严格的函数参数类型检查
-    "strictBindCallApply": true, // 严格的 bind/call/apply 方法类型检查
-    "strictPropertyInitialization": true, // 严格的类属性初始化检查
-    "noImplicitThis": true, // 禁止 this 有隐式 any 类型
-    "useUnknownInCatchVariables": true, // 在 catch 子句中使用 unknown 类型
-    "alwaysStrict": true // 在生成的 JavaScript 中使用严格模式
-  }
-}
-```
-
-- **strict**: 启用所有严格类型检查选项
-  - 推荐值：`true`（适用于新项目）
-  - 影响：打开所有严格类型检查，显著提高代码质量和类型安全
-
-### 13.2.3 文件输出配置
-
-```json
-{
-  "compilerOptions": {
-    "outDir": "./dist", // 输出目录
-    "rootDir": "./src", // 源文件目录
-    "sourceMap": true, // 生成源映射文件
-    "inlineSources": true, // 将源码内联到源映射中
-    "declaration": true, // 生成 .d.ts 类型声明文件
-    "declarationMap": true, // 为声明文件生成源映射
-    "removeComments": false, // 保留注释
-    "newLine": "lf" // 行尾序列 (lf 或 crlf)
-  }
-}
-```
-
-- **outDir**: 指定输出目录
-  - 示例值：`"./dist"`, `"./build"`, `"./out"`
-  - 影响：所有编译后的 JavaScript 文件将输出到该目录
-
-- **rootDir**: 指定源文件的根目录
-  - 示例值：`"./src"`, `"./app"`
-  - 影响：TypeScript 会保留 rootDir 下的目录结构到 outDir
-
-- **sourceMap**: 是否生成源映射文件
-  - 推荐值：开发环境 `true`，生产环境视情况决定
-  - 影响：生成 .js.map 文件，方便调试
-
-### 13.2.4 JavaScript 支持选项
-
-```json
-{
-  "compilerOptions": {
-    "allowJs": true, // 允许编译 JavaScript 文件
-    "checkJs": true, // 对 JavaScript 文件进行类型检查
-    "maxNodeModuleJsDepth": 1, // JavaScript 模块的最大依赖深度
-    "jsx": "react", // JSX 支持模式
-    "jsxFactory": "React.createElement", // 指定 JSX 工厂函数
-    "jsxFragmentFactory": "React.Fragment" // 指定 JSX Fragment 工厂函数
-  }
-}
-```
-
-- **allowJs**: 是否允许编译 JavaScript 文件
-  - 使用场景：逐步迁移 JavaScript 项目到 TypeScript
-
-- **jsx**: JSX 编译方式
-  - 常见值：`"react"`, `"preserve"`, `"react-native"`, `"react-jsx"`, `"react-jsxdev"`
-  - 影响：控制如何处理 JSX 语法
-
-### 13.2.5 类型检查选项
-
-```json
-{
-  "compilerOptions": {
-    "noUnusedLocals": true, // 报告未使用的本地变量错误
-    "noUnusedParameters": true, // 报告未使用的参数错误
-    "noImplicitReturns": true, // 报告函数未返回值错误
-    "noFallthroughCasesInSwitch": true, // 报告 switch 语句贯穿错误
-    "noUncheckedIndexedAccess": true, // 索引签名结果包含 undefined
-    "allowUnreachableCode": false, // 不允许不可到达的代码
-    "allowUnusedLabels": false // 不允许未使用的标签
-  }
-}
-```
-
-- **noUnusedLocals/noUnusedParameters**: 检查未使用的变量和参数
-  - 推荐值：`true`
-  - 影响：帮助保持代码整洁
-
-### 13.2.6 高级选项
-
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true, // 启用装饰器
-    "emitDecoratorMetadata": true, // 为装饰器生成元数据
-    "skipLibCheck": true, // 跳过对声明文件的类型检查
-    "forceConsistentCasingInFileNames": true, // 强制文件名大小写一致性
-    "isolatedModules": true, // 每个文件单独编译
-    "preserveConstEnums": true, // 保留 const 枚举声明
-    "composite": true, // 启用项目合成，用于项目引用
-    "incremental": true, // 启用增量编译
-    "tsBuildInfoFile": "./buildcache", // 增量编译信息文件
-    "assumeChangesOnlyAffectDirectDependencies": false // 假设更改只影响直接依赖
-  }
-}
-```
-
-- **experimentalDecorators**: 启用装饰器支持
-  - 使用场景：使用 Angular、TypeORM 等依赖装饰器的库
-
-- **skipLibCheck**: 是否跳过对声明文件的类型检查
-  - 推荐值：通常为 `true`
-  - 影响：可以显著加快编译速度，但可能忽略库中的类型错误
-
-## 13.3 文件包含与排除配置
-
-除了 `compilerOptions` 外，tsconfig.json 的其他顶级选项也非常重要：
-
-```json
-{
-  "include": [
-    "src/**/*" // 包含 src 目录下的所有文件
-  ],
-  "exclude": [
-    "node_modules", // 排除 node_modules
-    "**/*.spec.ts", // 排除测试文件
-    "src/temp" // 排除特定目录
-  ],
-  "files": [
-    "src/main.ts", // 明确包含特定文件
-    "src/globals.d.ts"
-  ]
-}
-```
-
-- **include**: 指定要包含的文件或模式
-  - 使用 glob 模式：`**/*` 匹配任意数量的目录和所有文件
-  - 常见设置：`["src/**/*"]`, `["**/*.ts", "**/*.tsx"]`
-
-- **exclude**: 指定要排除的文件或模式
-  - 默认排除：`node_modules`, `bower_components`, `jspm_packages`
-  - 常见排除：测试文件、临时文件、构建输出
-
-- **files**: 明确指定包含的文件列表
-  - 适用于小型项目或需要精确控制的情况
-  - 不支持 glob 模式，必须列出具体文件
-
-## 13.4 扩展配置
-
-通过 `extends` 选项，可以基于其他配置文件构建并覆盖特定选项：
-
-```json
-{
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "strict": true // 覆盖基础配置的选项
-  }
-}
-```
-
-常见扩展场景：
-- 基于官方预设配置：`"extends": "@tsconfig/node16/tsconfig.json"`
-- 不同环境的配置：`"extends": "./tsconfig.common.json"`
-- 不同构建目标的配置：生产环境、开发环境、测试环境
-
-## 13.5 项目引用
-
-对于大型项目或 monorepo，可以使用项目引用来划分项目结构：
-
-```json
-{
-  "compilerOptions": {
-    "composite": true, // 启用合成功能，用于项目引用
-    "declaration": true, // 项目引用需要生成声明文件
-    "declarationMap": true, // 为声明文件生成源映射
-    "rootDir": "."
-  },
-  "references": [
-    { "path": "../common" }, // 引用其他项目
-    { "path": "../api" }
-  ]
-}
-```
-
-项目引用的优势：
-- 提高类型检查和编译速度
-- 实施模块边界和代码组织
-- 支持增量构建
-
-## 13.6 常见配置模板
-
-### 13.6.1 Node.js 项目配置
-
-```json
-{
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "lib": ["es2020"],
-    "moduleResolution": "node",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.spec.ts"]
-}
-```
-
-### 13.6.2 React 项目配置
-
-```json
-{
-  "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
-  },
-  "include": ["src"]
-}
-```
-
-### 13.6.3 库项目配置
-
-```json
-{
-  "compilerOptions": {
-    "target": "es2015",
-    "module": "esnext",
-    "lib": ["es2020", "dom"],
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noImplicitThis": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
-}
-```
-
-## 13.7 实际应用场景
-
-### 13.7.1 路径别名配置
-
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@app/*": ["src/app/*"],
-      "@shared/*": ["src/shared/*"],
-      "@environments/*": ["src/environments/*"]
-    }
-  }
-}
-```
-
-这种配置允许你使用别名导入模块：
-
-```typescript
-// 使用别名导入
-import { UserService } from '@app/services/user.service';
-import { Logger } from '@shared/utils/logger';
-```
-
-### 13.7.2 多目标构建配置
-
-使用多个 tsconfig 文件为不同目标环境构建：
-
-**tsconfig.json** (基础配置)
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "declaration": true,
-    "sourceMap": true,
-    "rootDir": "./src"
-  }
-}
-```
-
-**tsconfig.esm.json** (ESM 模块)
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "target": "es2020",
-    "module": "esnext",
-    "outDir": "./dist/esm"
-  }
-}
-```
-
-**tsconfig.cjs.json** (CommonJS 模块)
-```json
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "target": "es2015",
-    "module": "commonjs",
-    "outDir": "./dist/cjs"
-  }
-}
-```
-
-### 13.7.3 通过引用管理 monorepo
-
-在 monorepo 中使用项目引用优化构建过程：
-
-**根 tsconfig.json**
-```json
-{
-  "files": [],
-  "references": [
-    { "path": "packages/common" },
-    { "path": "packages/server" },
-    { "path": "packages/client" }
-  ]
-}
-```
-
-**packages/server/tsconfig.json**
-```json
-{
-  "compilerOptions": {
-    "composite": true,
-    "rootDir": "./src",
-    "outDir": "./dist"
-  },
-  "references": [
-    { "path": "../common" }
-  ]
-}
-```
-
-## 13.8 tsconfig.json 最佳实践
-
-1. **始终启用 strict 模式**：在新项目中启用严格模式，提高代码质量
-
-2. **谨慎配置 include 和 exclude**：只包含必要的文件，排除不需要编译的文件
-
-3. **使用 extends 避免重复配置**：创建基础配置文件，然后在不同环境中扩展
-
-4. **为不同用途维护多个配置文件**：如 `tsconfig.build.json`、`tsconfig.test.json`
-
-5. **适当开启增量编译**：通过 `incremental` 提高大型项目的编译速度
-
-6. **考虑项目特性选择适当选项**：
-   - 对于 React 项目，设置 `jsx` 为 `react-jsx`
-   - 对于 API 或库项目，启用 `declaration`
-   - 对于正在迁移的项目，使用 `allowJs` 和 `checkJs`
-
-7. **根据目标环境设置适当的 target 和 lib**：
-   - 现代浏览器可以使用 `es2020` 或更高
-   - 支持旧浏览器时考虑使用 `es5`
-
-8. **使用 sourceMap 增强开发体验**：在开发环境中始终启用源映射
-
-通过全面了解和正确配置 tsconfig.json，你可以充分发挥 TypeScript 的强大功能，同时保持良好的开发体验和构建性能。不同项目和团队可能需要不同的配置，因此了解这些选项的含义和影响非常重要。
-
 # 14 类型断言、类型转换和应用场景
 
 类型断言和类型转换是 TypeScript 中处理类型关系的重要机制。它们帮助开发者在特定情况下绕过或增强类型系统的限制，使代码更加灵活和实用。本章将详细探讨类型断言的不同形式、应用场景以及最佳实践。
@@ -999,3 +528,735 @@ if (logger) {
 ```
 
 通过理解并掌握类型断言和类型转换的各种技术，你可以在保持类型安全的同时，使 TypeScript 代码更加灵活和实用。记住，类型断言应该谨慎使用，并尽可能通过类型守卫和运行时检查来确保类型安全。
+
+# 15 泛型
+
+泛型是 TypeScript 中最强大的特性之一，它允许我们创建可重用的组件，使其能够适用于多种类型而非单一类型。通过泛型，我们可以编写灵活、可扩展且类型安全的代码。
+
+## 15.1 泛型基础概念
+
+泛型就像是类型的"函数"，它可以接受一个或多个类型参数，然后返回一个使用这些参数的类型。
+
+### 15.1.1 为什么需要泛型？
+
+考虑以下函数，它返回传入的参数：
+
+```typescript
+// 不使用泛型的情况
+function identity(arg: any): any {
+  return arg;
+}
+
+const value = identity("hello"); // 值的类型是 any，丢失了类型信息
+```
+
+使用 `any` 类型会导致我们丢失传入参数的类型信息。泛型可以解决这个问题：
+
+```typescript
+// 使用泛型
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+const value = identity("hello"); // TypeScript 推断 value 的类型为 string
+const num = identity(42);        // TypeScript 推断 num 的类型为 number
+```
+
+### 15.1.2 泛型类型参数
+
+泛型使用尖括号 `<>` 语法来定义类型参数，通常使用单个大写字母（如 `T`, `U`, `V` 等）命名：
+
+```typescript
+// 单个类型参数
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+// 多个类型参数
+function pair<T, U>(first: T, second: U): [T, U] {
+  return [first, second];
+}
+
+const result = pair("hello", 42); // 类型为 [string, number]
+```
+
+### 15.1.3 泛型类型推断
+
+TypeScript 通常能够从传入的参数自动推断出泛型的类型：
+
+```typescript
+// 类型推断示例
+const numbers = [1, 2, 3];
+const firstNumber = first(numbers); // TypeScript 自动推断 T 为 number
+
+// 也可以显式指定类型
+const firstString = first<string>(["a", "b", "c"]);
+```
+
+## 15.2 泛型函数
+
+泛型函数使我们能够创建适用于多种类型的可重用函数。
+
+### 15.2.1 基本泛型函数
+
+```typescript
+// 基本泛型函数
+function swap<T, U>(tuple: [T, U]): [U, T] {
+  return [tuple[1], tuple[0]];
+}
+
+const result = swap(["hello", 42]); // 类型为 [number, string]
+```
+
+### 15.2.2 泛型箭头函数
+
+```typescript
+// 泛型箭头函数
+const getProperty = <T, K extends keyof T>(obj: T, key: K): T[K] => {
+  return obj[key];
+};
+
+const person = { name: "Alice", age: 30 };
+const name = getProperty(person, "name"); // 类型为 string
+const age = getProperty(person, "age");   // 类型为 number
+```
+
+### 15.2.3 函数重载与泛型
+
+泛型可以结合函数重载使用，创建更加灵活的 API：
+
+```typescript
+// 泛型函数重载
+function convert<T extends number>(value: T): string;
+function convert<T extends string>(value: T): number;
+function convert<T extends string | number>(value: T): string | number {
+  if (typeof value === "string") {
+    return parseFloat(value);
+  } else {
+    return String(value);
+  }
+}
+
+const str = convert(42);    // 类型为 string
+const num = convert("3.14"); // 类型为 number
+```
+
+## 15.3 泛型接口
+
+泛型可以用于接口定义，创建灵活且可重用的接口类型。
+
+### 15.3.1 基本泛型接口
+
+```typescript
+// 基本泛型接口
+interface Box<T> {
+  value: T;
+  getValue(): T;
+}
+
+const stringBox: Box<string> = {
+  value: "hello",
+  getValue() { return this.value; }
+};
+
+const numberBox: Box<number> = {
+  value: 42,
+  getValue() { return this.value; }
+};
+```
+
+### 15.3.2 泛型接口作为函数类型
+
+```typescript
+// 泛型函数接口
+interface Parser<T> {
+  (input: string): T;
+}
+
+const numberParser: Parser<number> = (input) => parseFloat(input);
+const booleanParser: Parser<boolean> = (input) => input === "true";
+
+const num = numberParser("42");     // 类型为 number
+const bool = booleanParser("true"); // 类型为 boolean
+```
+
+### 15.3.3 泛型索引类型接口
+
+```typescript
+// 泛型索引类型接口
+interface Dictionary<T> {
+  [key: string]: T;
+}
+
+const stringDict: Dictionary<string> = {
+  name: "Alice",
+  country: "Wonderland"
+};
+
+const numberDict: Dictionary<number> = {
+  age: 30,
+  score: 95
+};
+```
+
+## 15.4 泛型类
+
+泛型也可以用于类的定义，使类能够处理多种类型的数据。
+
+### 15.4.1 基本泛型类
+
+```typescript
+// 基本泛型类
+class Container<T> {
+  private item: T;
+
+  constructor(item: T) {
+    this.item = item;
+  }
+
+  getItem(): T {
+    return this.item;
+  }
+
+  setItem(item: T): void {
+    this.item = item;
+  }
+}
+
+const numberContainer = new Container<number>(123);
+const stringContainer = new Container("hello");  // 类型推断为 Container<string>
+
+numberContainer.setItem(456);
+// numberContainer.setItem("wrong"); // 错误：类型不兼容
+```
+
+### 15.4.2 使用多个泛型参数
+
+```typescript
+// 多泛型参数的类
+class KeyValuePair<K, V> {
+  constructor(public key: K, public value: V) {}
+
+  toString(): string {
+    return `[${this.key}]: ${this.value}`;
+  }
+}
+
+const pair1 = new KeyValuePair("name", "Alice");
+const pair2 = new KeyValuePair(1, { x: 10, y: 20 });
+
+console.log(pair1.toString()); // "[name]: Alice"
+console.log(pair1.key);        // 类型为 string
+console.log(pair2.value);      // 类型为 { x: number; y: number; }
+```
+
+### 15.4.3 在静态成员中使用泛型
+
+需要注意的是，类的静态成员不能使用类的泛型参数：
+
+```typescript
+class StaticGeneric<T> {
+  // 静态属性不能使用类型参数 T
+  // static defaultValue: T; // 错误
+
+  // 静态方法可以有自己的泛型参数
+  static createInstance<U>(value: U): StaticGeneric<U> {
+    return new StaticGeneric<U>(value);
+  }
+
+  constructor(public value: T) {}
+}
+
+const instance = StaticGeneric.createInstance("hello");
+console.log(instance.value); // "hello"
+```
+
+## 15.5 泛型约束
+
+有时我们需要限制泛型类型必须具有某些属性或行为，这时可以使用泛型约束。
+
+### 15.5.1 使用 extends 关键字
+
+```typescript
+// 基本泛型约束
+interface HasLength {
+  length: number;
+}
+
+// T 必须有 length 属性
+function printLength<T extends HasLength>(arg: T): number {
+  console.log(`Length: ${arg.length}`);
+  return arg.length;
+}
+
+printLength("hello");      // 字符串有 length 属性
+printLength([1, 2, 3]);    // 数组有 length 属性
+printLength({ length: 5 }); // 对象有 length 属性
+// printLength(123);       // 错误：number 没有 length 属性
+```
+
+### 15.5.2 多类型约束
+
+```typescript
+// 多类型约束
+interface Printable {
+  print(): void;
+}
+
+interface Loggable {
+  log(): void;
+}
+
+// T 必须同时实现 Printable 和 Loggable 接口
+function process<T extends Printable & Loggable>(item: T): void {
+  item.print();
+  item.log();
+}
+
+class Document implements Printable, Loggable {
+  print() {
+    console.log("Printing document...");
+  }
+  
+  log() {
+    console.log("Logging document...");
+  }
+}
+
+process(new Document()); // 正常工作
+// process({ print: () => {} }); // 错误：缺少 log 方法
+```
+
+### 15.5.3 使用 keyof 进行约束
+
+`keyof` 操作符可以用于获取类型的所有属性名，结合泛型约束使用非常强大：
+
+```typescript
+// 使用 keyof 约束
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const person = {
+  name: "Alice",
+  age: 30,
+  location: "Wonderland"
+};
+
+const name = getProperty(person, "name"); // 类型为 string
+const age = getProperty(person, "age");   // 类型为 number
+// const invalid = getProperty(person, "job"); // 错误：person 没有 job 属性
+```
+
+## 15.6 泛型参数默认值
+
+TypeScript 2.3+ 支持为泛型参数提供默认类型：
+
+```typescript
+// 泛型参数默认值
+interface ApiResponse<T = any> {
+  data: T;
+  status: number;
+  message: string;
+}
+
+// 不指定类型参数时，默认为 any
+const response1: ApiResponse = {
+  data: "hello",
+  status: 200,
+  message: "Success"
+};
+
+// 显式指定类型参数
+const response2: ApiResponse<number[]> = {
+  data: [1, 2, 3],
+  status: 200,
+  message: "Success"
+};
+
+// 多个泛型参数的默认值
+interface Store<K extends string | number = string, V = any> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+}
+
+// 使用默认类型参数
+const stringStore: Store = {
+  get(key) { return undefined; },
+  set(key, value) {}
+};
+
+// 自定义类型参数
+const numberStore: Store<number, string> = {
+  get(key) { return undefined; },
+  set(key, value) {}
+};
+```
+
+## 15.7 泛型工具类型
+
+TypeScript 内置了一些有用的泛型工具类型，用于常见的类型转换操作。
+
+### 15.7.1 内置工具类型
+
+```typescript
+// Partial - 将所有属性变为可选
+interface User {
+  name: string;
+  age: number;
+  email: string;
+}
+
+type PartialUser = Partial<User>;
+// 等同于：{ name?: string; age?: number; email?: string; }
+
+// Required - 将所有属性变为必需
+interface PartialAddress {
+  street?: string;
+  city?: string;
+  country?: string;
+}
+
+type FullAddress = Required<PartialAddress>;
+// 等同于：{ street: string; city: string; country: string; }
+
+// Readonly - 将所有属性变为只读
+type ReadonlyUser = Readonly<User>;
+// 等同于：{ readonly name: string; readonly age: number; readonly email: string; }
+
+// Record - 创建键值对类型
+type UserRoles = Record<string, string[]>;
+// 等同于：{ [key: string]: string[] }
+
+// Pick - 从类型中选择特定属性
+type UserBasicInfo = Pick<User, 'name' | 'email'>;
+// 等同于：{ name: string; email: string; }
+
+// Omit - 从类型中删除特定属性
+type UserWithoutEmail = Omit<User, 'email'>;
+// 等同于：{ name: string; age: number; }
+
+// Exclude - 排除联合类型中的特定成员
+type Numbers = 1 | 2 | 3 | 4 | 5;
+type EvenNumbers = Exclude<Numbers, 1 | 3 | 5>;
+// 等同于：2 | 4
+
+// Extract - 提取联合类型中的特定成员
+type ExtractedNumbers = Extract<Numbers, 1 | 2 | 6>;
+// 等同于：1 | 2
+
+// NonNullable - 排除 null 和 undefined
+type MaybeString = string | null | undefined;
+type DefinitelyString = NonNullable<MaybeString>;
+// 等同于：string
+```
+
+### 15.7.2 条件类型
+
+条件类型使用 `extends` 关键字进行类型判断，类似于三元运算符：
+
+```typescript
+// 条件类型基础
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<"hello">; // true
+type B = IsString<123>;     // false
+
+// 条件类型与联合类型分配
+type ToArray<T> = T extends any ? T[] : never;
+
+type NumberOrStringArray = ToArray<number | string>;
+// 等同于：number[] | string[]
+
+// infer 关键字用于提取类型
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : any;
+
+function greeting(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+type GreetingReturn = ReturnType<typeof greeting>; // string
+```
+
+### 15.7.3 映射类型
+
+映射类型允许你从现有类型创建新类型，通过转换每个属性：
+
+```typescript
+// 基本映射类型
+type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+};
+
+type ReadonlyPoint = {
+  readonly x: number;
+  readonly y: number;
+};
+
+type MutablePoint = Mutable<ReadonlyPoint>;
+// 等同于：{ x: number; y: number; }
+
+// 修改属性标志
+type Nullable<T> = {
+  [P in keyof T]: T[P] | null;
+};
+
+type UserWithNulls = Nullable<User>;
+// 等同于：{ name: string | null; age: number | null; email: string | null; }
+
+// 使用 as 重映射键
+type Getters<T> = {
+  [P in keyof T as `get${Capitalize<string & P>}`]: () => T[P]
+};
+
+type UserGetters = Getters<User>;
+/* 等同于：{
+  getName: () => string;
+  getAge: () => number;
+  getEmail: () => string;
+} */
+```
+
+## 15.8 实际应用场景
+
+### 15.8.1 类型安全的状态管理
+
+```typescript
+// 创建一个简单的状态管理器
+class State<T> {
+  private state: T;
+  private listeners: ((state: T) => void)[] = [];
+
+  constructor(initialState: T) {
+    this.state = initialState;
+  }
+
+  getState(): T {
+    return { ...this.state } as T;
+  }
+
+  setState(newState: Partial<T>): void {
+    this.state = { ...this.state, ...newState };
+    this.notify();
+  }
+
+  subscribe(listener: (state: T) => void): () => void {
+    this.listeners.push(listener);
+    
+    // 返回取消订阅的函数
+    return () => {
+      const index = this.listeners.indexOf(listener);
+      if (index > -1) {
+        this.listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener(this.getState());
+    }
+  }
+}
+
+// 使用示例
+interface AppState {
+  user: { name: string } | null;
+  theme: 'light' | 'dark';
+  notifications: string[];
+}
+
+const initialState: AppState = {
+  user: null,
+  theme: 'light',
+  notifications: []
+};
+
+const appState = new State<AppState>(initialState);
+
+// 添加监听器
+const unsubscribe = appState.subscribe(state => {
+  console.log('State updated:', state);
+});
+
+// 更新状态
+appState.setState({ user: { name: 'Alice' } });
+appState.setState({ theme: 'dark' });
+
+// 取消订阅
+unsubscribe();
+```
+
+### 15.8.2 类型安全的 API 客户端
+
+```typescript
+// 类型安全的 API 客户端
+interface ApiClient {
+  get<T>(url: string): Promise<T>;
+  post<T, U>(url: string, data: T): Promise<U>;
+  put<T, U>(url: string, data: T): Promise<U>;
+  delete<T>(url: string): Promise<T>;
+}
+
+// 实现
+class HttpClient implements ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = '') {
+    this.baseUrl = baseUrl;
+  }
+
+  async get<T>(url: string): Promise<T> {
+    const response = await fetch(this.baseUrl + url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<T>;
+  }
+
+  async post<T, U>(url: string, data: T): Promise<U> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<U>;
+  }
+
+  async put<T, U>(url: string, data: T): Promise<U> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<U>;
+  }
+
+  async delete<T>(url: string): Promise<T> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<T>;
+  }
+}
+
+// 使用示例
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+const api = new HttpClient('https://api.example.com');
+
+// 类型安全的 API 调用
+async function fetchUsers(): Promise<User[]> {
+  return api.get<User[]>('/users');
+}
+
+async function createUser(user: CreateUserRequest): Promise<User> {
+  return api.post<CreateUserRequest, User>('/users', user);
+}
+
+async function updateUser(id: number, user: Partial<User>): Promise<User> {
+  return api.put<Partial<User>, User>(`/users/${id}`, user);
+}
+```
+
+### 15.8.3 泛型组件库
+
+```typescript
+// 泛型 React 组件示例（使用 JSX）
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+  keyExtractor: (item: T) => string | number;
+}
+
+function List<T>(props: ListProps<T>): JSX.Element {
+  const { items, renderItem, keyExtractor } = props;
+  
+  return (
+    <ul>
+      {items.map(item => (
+        <li key={keyExtractor(item)}>
+          {renderItem(item)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// 使用示例
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+}
+
+const products: Product[] = [
+  { id: 1, name: "iPhone", price: 999 },
+  { id: 2, name: "iPad", price: 799 },
+  { id: 3, name: "MacBook", price: 1299 }
+];
+
+// 使用组件
+const ProductList = () => (
+  <List<Product>
+    items={products}
+    renderItem={(product) => (
+      <div>
+        <strong>{product.name}</strong>: ${product.price}
+      </div>
+    )}
+    keyExtractor={(product) => product.id}
+  />
+);
+```
+
+## 15.9 最佳实践
+
+1. **保持类型参数简单**：通常使用单个大写字母（T, U, K 等）表示泛型类型参数，或者使用有意义的命名（TEntity, TKey 等）。
+
+2. **尽量减少类型参数的数量**：如果可能，保持参数数量最小化，通常不超过 3 个。
+
+3. **提供默认类型参数**：对可能的类型参数提供默认值，提高 API 的易用性。
+
+4. **使用约束限制类型参数**：使用 `extends` 关键字约束类型参数，避免在实现中出现类型错误。
+
+5. **优先使用接口来定义泛型约束**：接口比联合类型或交集更清晰，更易于扩展。
+
+6. **考虑泛型工具类型**：熟悉并利用 TypeScript 内置的工具类型，避免重复实现。
+
+7. **避免过度使用泛型**：只在需要类型重用或类型安全时使用泛型，不要仅为了"看起来高级"而使用。
+
+泛型是 TypeScript 最强大的特性之一，掌握它可以帮助你编写更加灵活、可重用和类型安全的代码。通过实践和探索不同的应用场景，你将能够更加高效地利用泛型的优势。
+
+# 16 TypeScript 中的装饰器(Decorators)

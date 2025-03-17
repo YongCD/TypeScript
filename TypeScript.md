@@ -4648,6 +4648,7 @@ function getArea(shape: Circle | Rectangle) {
 interface Fish { swim(): void; }
 interface Bird { fly(): void; }
 
+// 在 TypeScript 中，pet is Fish 这种写法称为类型谓词（Type Predicate）格式: parameterName is Type
 function isFish(pet: Fish | Bird): pet is Fish {
   return (pet as Fish).swim !== undefined;
 }
@@ -4933,3 +4934,733 @@ if (logger) {
 ```
 
 通过理解并掌握类型断言和类型转换的各种技术，你可以在保持类型安全的同时，使 TypeScript 代码更加灵活和实用。记住，类型断言应该谨慎使用，并尽可能通过类型守卫和运行时检查来确保类型安全。
+
+# 15 泛型
+
+泛型是 TypeScript 中最强大的特性之一，它允许我们创建可重用的组件，使其能够适用于多种类型而非单一类型。通过泛型，我们可以编写灵活、可扩展且类型安全的代码。
+
+## 15.1 泛型基础概念
+
+泛型就像是类型的"函数"，它可以接受一个或多个类型参数，然后返回一个使用这些参数的类型。
+
+### 15.1.1 为什么需要泛型？
+
+考虑以下函数，它返回传入的参数：
+
+```typescript
+// 不使用泛型的情况
+function identity(arg: any): any {
+  return arg;
+}
+
+const value = identity("hello"); // 值的类型是 any，丢失了类型信息
+```
+
+使用 `any` 类型会导致我们丢失传入参数的类型信息。泛型可以解决这个问题：
+
+```typescript
+// 使用泛型
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+const value = identity("hello"); // TypeScript 推断 value 的类型为 string
+const num = identity(42);        // TypeScript 推断 num 的类型为 number
+```
+
+### 15.1.2 泛型类型参数
+
+泛型使用尖括号 `<>` 语法来定义类型参数，通常使用单个大写字母（如 `T`, `U`, `V` 等）命名：
+
+```typescript
+// 单个类型参数
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+// 多个类型参数
+function pair<T, U>(first: T, second: U): [T, U] {
+  return [first, second];
+}
+
+const result = pair("hello", 42); // 类型为 [string, number]
+```
+
+### 15.1.3 泛型类型推断
+
+TypeScript 通常能够从传入的参数自动推断出泛型的类型：
+
+```typescript
+// 类型推断示例
+const numbers = [1, 2, 3];
+const firstNumber = first(numbers); // TypeScript 自动推断 T 为 number
+
+// 也可以显式指定类型
+const firstString = first<string>(["a", "b", "c"]);
+```
+
+## 15.2 泛型函数
+
+泛型函数使我们能够创建适用于多种类型的可重用函数。
+
+### 15.2.1 基本泛型函数
+
+```typescript
+// 基本泛型函数
+function swap<T, U>(tuple: [T, U]): [U, T] {
+  return [tuple[1], tuple[0]];
+}
+
+const result = swap(["hello", 42]); // 类型为 [number, string]
+```
+
+### 15.2.2 泛型箭头函数
+
+```typescript
+// 泛型箭头函数
+const getProperty = <T, K extends keyof T>(obj: T, key: K): T[K] => {
+  return obj[key];
+};
+
+const person = { name: "Alice", age: 30 };
+const name = getProperty(person, "name"); // 类型为 string
+const age = getProperty(person, "age");   // 类型为 number
+```
+
+### 15.2.3 函数重载与泛型
+
+泛型可以结合函数重载使用，创建更加灵活的 API：
+
+```typescript
+// 泛型函数重载
+function convert<T extends number>(value: T): string;
+function convert<T extends string>(value: T): number;
+function convert<T extends string | number>(value: T): string | number {
+  if (typeof value === "string") {
+    return parseFloat(value);
+  } else {
+    return String(value);
+  }
+}
+
+const str = convert(42);    // 类型为 string
+const num = convert("3.14"); // 类型为 number
+```
+
+## 15.3 泛型接口
+
+泛型可以用于接口定义，创建灵活且可重用的接口类型。
+
+### 15.3.1 基本泛型接口
+
+```typescript
+// 基本泛型接口
+interface Box<T> {
+  value: T;
+  getValue(): T;
+}
+
+const stringBox: Box<string> = {
+  value: "hello",
+  getValue() { return this.value; }
+};
+
+const numberBox: Box<number> = {
+  value: 42,
+  getValue() { return this.value; }
+};
+```
+
+### 15.3.2 泛型接口作为函数类型
+
+```typescript
+// 泛型函数接口
+interface Parser<T> {
+  (input: string): T;
+}
+
+const numberParser: Parser<number> = (input) => parseFloat(input);
+const booleanParser: Parser<boolean> = (input) => input === "true";
+
+const num = numberParser("42");     // 类型为 number
+const bool = booleanParser("true"); // 类型为 boolean
+```
+
+### 15.3.3 泛型索引类型接口
+
+```typescript
+// 泛型索引类型接口
+interface Dictionary<T> {
+  [key: string]: T;
+}
+
+const stringDict: Dictionary<string> = {
+  name: "Alice",
+  country: "Wonderland"
+};
+
+const numberDict: Dictionary<number> = {
+  age: 30,
+  score: 95
+};
+```
+
+## 15.4 泛型类
+
+泛型也可以用于类的定义，使类能够处理多种类型的数据。
+
+### 15.4.1 基本泛型类
+
+```typescript
+// 基本泛型类
+class Container<T> {
+  private item: T;
+
+  constructor(item: T) {
+    this.item = item;
+  }
+
+  getItem(): T {
+    return this.item;
+  }
+
+  setItem(item: T): void {
+    this.item = item;
+  }
+}
+
+const numberContainer = new Container<number>(123);
+const stringContainer = new Container("hello");  // 类型推断为 Container<string>
+
+numberContainer.setItem(456);
+// numberContainer.setItem("wrong"); // 错误：类型不兼容
+```
+
+### 15.4.2 使用多个泛型参数
+
+```typescript
+// 多泛型参数的类
+class KeyValuePair<K, V> {
+  constructor(public key: K, public value: V) {}
+
+  toString(): string {
+    return `[${this.key}]: ${this.value}`;
+  }
+}
+
+const pair1 = new KeyValuePair("name", "Alice");
+const pair2 = new KeyValuePair(1, { x: 10, y: 20 });
+
+console.log(pair1.toString()); // "[name]: Alice"
+console.log(pair1.key);        // 类型为 string
+console.log(pair2.value);      // 类型为 { x: number; y: number; }
+```
+
+### 15.4.3 在静态成员中使用泛型
+
+需要注意的是，类的静态成员不能使用类的泛型参数：
+
+```typescript
+class StaticGeneric<T> {
+  // 静态属性不能使用类型参数 T
+  // static defaultValue: T; // 错误
+
+  // 静态方法可以有自己的泛型参数
+  static createInstance<U>(value: U): StaticGeneric<U> {
+    return new StaticGeneric<U>(value);
+  }
+
+  constructor(public value: T) {}
+}
+
+const instance = StaticGeneric.createInstance("hello");
+console.log(instance.value); // "hello"
+```
+
+## 15.5 泛型约束
+
+有时我们需要限制泛型类型必须具有某些属性或行为，这时可以使用泛型约束。
+
+### 15.5.1 使用 extends 关键字
+
+```typescript
+// 基本泛型约束
+interface HasLength {
+  length: number;
+}
+
+// T 必须有 length 属性
+function printLength<T extends HasLength>(arg: T): number {
+  console.log(`Length: ${arg.length}`);
+  return arg.length;
+}
+
+printLength("hello");      // 字符串有 length 属性
+printLength([1, 2, 3]);    // 数组有 length 属性
+printLength({ length: 5 }); // 对象有 length 属性
+// printLength(123);       // 错误：number 没有 length 属性
+```
+
+### 15.5.2 多类型约束
+
+```typescript
+// 多类型约束
+interface Printable {
+  print(): void;
+}
+
+interface Loggable {
+  log(): void;
+}
+
+// T 必须同时实现 Printable 和 Loggable 接口
+function process<T extends Printable & Loggable>(item: T): void {
+  item.print();
+  item.log();
+}
+
+class Document implements Printable, Loggable {
+  print() {
+    console.log("Printing document...");
+  }
+  
+  log() {
+    console.log("Logging document...");
+  }
+}
+
+process(new Document()); // 正常工作
+// process({ print: () => {} }); // 错误：缺少 log 方法
+```
+
+### 15.5.3 使用 keyof 进行约束
+
+`keyof` 操作符可以用于获取类型的所有属性名，结合泛型约束使用非常强大：
+
+```typescript
+// 使用 keyof 约束
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const person = {
+  name: "Alice",
+  age: 30,
+  location: "Wonderland"
+};
+
+const name = getProperty(person, "name"); // 类型为 string
+const age = getProperty(person, "age");   // 类型为 number
+// const invalid = getProperty(person, "job"); // 错误：person 没有 job 属性
+```
+
+## 15.6 泛型参数默认值
+
+TypeScript 2.3+ 支持为泛型参数提供默认类型：
+
+```typescript
+// 泛型参数默认值
+interface ApiResponse<T = any> {
+  data: T;
+  status: number;
+  message: string;
+}
+
+// 不指定类型参数时，默认为 any
+const response1: ApiResponse = {
+  data: "hello",
+  status: 200,
+  message: "Success"
+};
+
+// 显式指定类型参数
+const response2: ApiResponse<number[]> = {
+  data: [1, 2, 3],
+  status: 200,
+  message: "Success"
+};
+
+// 多个泛型参数的默认值
+interface Store<K extends string | number = string, V = any> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+}
+
+// 使用默认类型参数
+const stringStore: Store = {
+  get(key) { return undefined; },
+  set(key, value) {}
+};
+
+// 自定义类型参数
+const numberStore: Store<number, string> = {
+  get(key) { return undefined; },
+  set(key, value) {}
+};
+```
+
+## 15.7 泛型工具类型
+
+TypeScript 内置了一些有用的泛型工具类型，用于常见的类型转换操作。
+
+### 15.7.1 内置工具类型
+
+```typescript
+// Partial - 将所有属性变为可选
+interface User {
+  name: string;
+  age: number;
+  email: string;
+}
+
+type PartialUser = Partial<User>;
+// 等同于：{ name?: string; age?: number; email?: string; }
+
+// Required - 将所有属性变为必需
+interface PartialAddress {
+  street?: string;
+  city?: string;
+  country?: string;
+}
+
+type FullAddress = Required<PartialAddress>;
+// 等同于：{ street: string; city: string; country: string; }
+
+// Readonly - 将所有属性变为只读
+type ReadonlyUser = Readonly<User>;
+// 等同于：{ readonly name: string; readonly age: number; readonly email: string; }
+
+// Record - 创建键值对类型
+type UserRoles = Record<string, string[]>;
+// 等同于：{ [key: string]: string[] }
+
+// Pick - 从类型中选择特定属性
+type UserBasicInfo = Pick<User, 'name' | 'email'>;
+// 等同于：{ name: string; email: string; }
+
+// Omit - 从类型中删除特定属性
+type UserWithoutEmail = Omit<User, 'email'>;
+// 等同于：{ name: string; age: number; }
+
+// Exclude - 排除联合类型中的特定成员
+type Numbers = 1 | 2 | 3 | 4 | 5;
+type EvenNumbers = Exclude<Numbers, 1 | 3 | 5>;
+// 等同于：2 | 4
+
+// Extract - 提取联合类型中的特定成员
+type ExtractedNumbers = Extract<Numbers, 1 | 2 | 6>;
+// 等同于：1 | 2
+
+// NonNullable - 排除 null 和 undefined
+type MaybeString = string | null | undefined;
+type DefinitelyString = NonNullable<MaybeString>;
+// 等同于：string
+```
+
+### 15.7.2 条件类型
+
+条件类型使用 `extends` 关键字进行类型判断，类似于三元运算符：
+
+```typescript
+// 条件类型基础
+type IsString<T> = T extends string ? true : false;
+
+type A = IsString<"hello">; // true
+type B = IsString<123>;     // false
+
+// 条件类型与联合类型分配
+type ToArray<T> = T extends any ? T[] : never;
+
+type NumberOrStringArray = ToArray<number | string>;
+// 等同于：number[] | string[]
+
+// infer 关键字用于提取类型
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : any;
+
+function greeting(name: string): string {
+  return `Hello, ${name}!`;
+}
+
+type GreetingReturn = ReturnType<typeof greeting>; // string
+```
+
+### 15.7.3 映射类型
+
+映射类型允许你从现有类型创建新类型，通过转换每个属性：
+
+```typescript
+// 基本映射类型
+type Mutable<T> = {
+  -readonly [P in keyof T]: T[P]
+};
+
+type ReadonlyPoint = {
+  readonly x: number;
+  readonly y: number;
+};
+
+type MutablePoint = Mutable<ReadonlyPoint>;
+// 等同于：{ x: number; y: number; }
+
+// 修改属性标志
+type Nullable<T> = {
+  [P in keyof T]: T[P] | null;
+};
+
+type UserWithNulls = Nullable<User>;
+// 等同于：{ name: string | null; age: number | null; email: string | null; }
+
+// 使用 as 重映射键
+type Getters<T> = {
+  [P in keyof T as `get${Capitalize<string & P>}`]: () => T[P]
+};
+
+type UserGetters = Getters<User>;
+/* 等同于：{
+  getName: () => string;
+  getAge: () => number;
+  getEmail: () => string;
+} */
+```
+
+## 15.8 实际应用场景
+
+### 15.8.1 类型安全的状态管理
+
+```typescript
+// 创建一个简单的状态管理器
+class State<T> {
+  private state: T;
+  private listeners: ((state: T) => void)[] = [];
+
+  constructor(initialState: T) {
+    this.state = initialState;
+  }
+
+  getState(): T {
+    return { ...this.state } as T;
+  }
+
+  setState(newState: Partial<T>): void {
+    this.state = { ...this.state, ...newState };
+    this.notify();
+  }
+
+  subscribe(listener: (state: T) => void): () => void {
+    this.listeners.push(listener);
+    
+    // 返回取消订阅的函数
+    return () => {
+      const index = this.listeners.indexOf(listener);
+      if (index > -1) {
+        this.listeners.splice(index, 1);
+      }
+    };
+  }
+
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener(this.getState());
+    }
+  }
+}
+
+// 使用示例
+interface AppState {
+  user: { name: string } | null;
+  theme: 'light' | 'dark';
+  notifications: string[];
+}
+
+const initialState: AppState = {
+  user: null,
+  theme: 'light',
+  notifications: []
+};
+
+const appState = new State<AppState>(initialState);
+
+// 添加监听器
+const unsubscribe = appState.subscribe(state => {
+  console.log('State updated:', state);
+});
+
+// 更新状态
+appState.setState({ user: { name: 'Alice' } });
+appState.setState({ theme: 'dark' });
+
+// 取消订阅
+unsubscribe();
+```
+
+### 15.8.2 类型安全的 API 客户端
+
+```typescript
+// 类型安全的 API 客户端
+interface ApiClient {
+  get<T>(url: string): Promise<T>;
+  post<T, U>(url: string, data: T): Promise<U>;
+  put<T, U>(url: string, data: T): Promise<U>;
+  delete<T>(url: string): Promise<T>;
+}
+
+// 实现
+class HttpClient implements ApiClient {
+  private baseUrl: string;
+
+  constructor(baseUrl: string = '') {
+    this.baseUrl = baseUrl;
+  }
+
+  async get<T>(url: string): Promise<T> {
+    const response = await fetch(this.baseUrl + url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<T>;
+  }
+
+  async post<T, U>(url: string, data: T): Promise<U> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<U>;
+  }
+
+  async put<T, U>(url: string, data: T): Promise<U> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<U>;
+  }
+
+  async delete<T>(url: string): Promise<T> {
+    const response = await fetch(this.baseUrl + url, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response.json() as Promise<T>;
+  }
+}
+
+// 使用示例
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+}
+
+const api = new HttpClient('https://api.example.com');
+
+// 类型安全的 API 调用
+async function fetchUsers(): Promise<User[]> {
+  return api.get<User[]>('/users');
+}
+
+async function createUser(user: CreateUserRequest): Promise<User> {
+  return api.post<CreateUserRequest, User>('/users', user);
+}
+
+async function updateUser(id: number, user: Partial<User>): Promise<User> {
+  return api.put<Partial<User>, User>(`/users/${id}`, user);
+}
+```
+
+### 15.8.3 泛型组件库
+
+```typescript
+// 泛型 React 组件示例（使用 JSX）
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+  keyExtractor: (item: T) => string | number;
+}
+
+function List<T>(props: ListProps<T>): JSX.Element {
+  const { items, renderItem, keyExtractor } = props;
+  
+  return (
+    <ul>
+      {items.map(item => (
+        <li key={keyExtractor(item)}>
+          {renderItem(item)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// 使用示例
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+}
+
+const products: Product[] = [
+  { id: 1, name: "iPhone", price: 999 },
+  { id: 2, name: "iPad", price: 799 },
+  { id: 3, name: "MacBook", price: 1299 }
+];
+
+// 使用组件
+const ProductList = () => (
+  <List<Product>
+    items={products}
+    renderItem={(product) => (
+      <div>
+        <strong>{product.name}</strong>: ${product.price}
+      </div>
+    )}
+    keyExtractor={(product) => product.id}
+  />
+);
+```
+
+## 15.9 最佳实践
+
+1. **保持类型参数简单**：通常使用单个大写字母（T, U, K 等）表示泛型类型参数，或者使用有意义的命名（TEntity, TKey 等）。
+
+2. **尽量减少类型参数的数量**：如果可能，保持参数数量最小化，通常不超过 3 个。
+
+3. **提供默认类型参数**：对可能的类型参数提供默认值，提高 API 的易用性。
+
+4. **使用约束限制类型参数**：使用 `extends` 关键字约束类型参数，避免在实现中出现类型错误。
+
+5. **优先使用接口来定义泛型约束**：接口比联合类型或交集更清晰，更易于扩展。
+
+6. **考虑泛型工具类型**：熟悉并利用 TypeScript 内置的工具类型，避免重复实现。
+
+7. **避免过度使用泛型**：只在需要类型重用或类型安全时使用泛型，不要仅为了"看起来高级"而使用。
+
+泛型是 TypeScript 最强大的特性之一，掌握它可以帮助你编写更加灵活、可重用和类型安全的代码。通过实践和探索不同的应用场景，你将能够更加高效地利用泛型的优势。
