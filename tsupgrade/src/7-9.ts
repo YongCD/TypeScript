@@ -12,4 +12,6 @@ class CommerCialBank {
   }
 }
 
+type ConstructorType = new (name: string, address: string) => CommerCialBank
+
 export {}
