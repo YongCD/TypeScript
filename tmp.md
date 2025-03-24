@@ -1,608 +1,3 @@
-# 18 infer 工具类型
-
-`infer` 关键字是 TypeScript 中的强大功能，它允许我们在条件类型中推断和提取类型的一部分。这个关键字只能在条件类型的 `extends` 子句中使用，使我们能够捕获和重用类型的组成部分。
-
-## 18.1 infer 的基本概念
-
-`infer` 关键字用于声明一个类型变量，该变量表示待推断的类型。它通常出现在条件类型的 `extends` 子句中：
-
-```typescript
-// infer 的基本语法
-type ExtractType<T> = T extends infer R ? R : never;
-
-// 使用示例
-type Result = ExtractType<string>; // Result 类型为 string
-```
-
-在上述例子中，`infer R` 声明了一个名为 `R` 的类型变量，它代表我们想要从 `T` 中提取的类型。
-
-## 18.2 infer 在条件类型中的应用
-
-### 18.2.1 提取函数参数类型
-
-```typescript
-// 提取函数的第一个参数类型
-type FirstParameter<T extends (...args: any[]) => any> = 
-  T extends (first: infer First, ...rest: any[]) => any ? First : never;
-
-// 示例
-function greet(name: string, age: number): void {
-  console.log(`Hello, ${name}! You are ${age} years old.`);
-}
-
-type NameType = FirstParameter<typeof greet>; // string
-```
-
-### 18.2.2 提取函数返回值类型
-
-```typescript
-// 提取函数返回值类型
-type ReturnTypeCustom<T extends (...args: any[]) => any> =
-  T extends (...args: any[]) => infer R ? R : any;
-
-// 示例
-function createUser(name: string, age: number) {
-  return { name, age, createdAt: new Date() };
-}
-
-type User = ReturnTypeCustom<typeof createUser>; 
-// { name: string; age: number; createdAt: Date; }
-```
-
-### 18.2.3 提取数组元素类型
-
-```typescript
-// 提取数组元素类型
-type ArrayElement<T> = T extends Array<infer Element> ? Element : never;
-
-// 示例
-type Numbers = ArrayElement<number[]>; // number
-type StringOrNumbers = ArrayElement<(string | number)[]>; // string | number
-```
-
-### 18.2.4 提取 Promise 包裹的类型
-
-```typescript
-// 提取 Promise 包裹的类型
-type UnpackPromise<T> = T extends Promise<infer U> ? U : T;
-
-// 示例
-type ResolvedType = UnpackPromise<Promise<string>>; // string
-type NonPromiseType = UnpackPromise<number>; // number，保持不变
-```
-
-## 18.3 递归使用 infer 处理嵌套类型
-
-我们可以递归地使用 `infer` 来处理嵌套类型：
-
-```typescript
-// 递归提取多层嵌套的 Promise 类型
-type DeepUnpackPromise<T> = 
-  T extends Promise<infer U> ? DeepUnpackPromise<U> : T;
-
-// 示例
-type NestedPromise = Promise<Promise<Promise<string>>>;
-type FinalType = DeepUnpackPromise<NestedPromise>; // string
-```
-
-## 18.4 infer 在元组类型中的应用
-
-### 18.4.1 提取元组的第一个元素类型
-
-```typescript
-// 提取元组的第一个元素类型
-type First<T extends any[]> = T extends [infer F, ...any[]] ? F : never;
-
-// 示例
-type FirstElement = First<[string, number, boolean]>; // string
-type EmptyTuple = First<[]>; // never
-```
-
-### 18.4.2 提取元组的最后一个元素类型
-
-```typescript
-// 提取元组的最后一个元素类型
-type Last<T extends any[]> = 
-  T extends [...any[], infer L] ? L : never;
-
-// 示例
-type LastElement = Last<[string, number, boolean]>; // boolean
-```
-
-### 18.4.3 移除元组的第一个元素
-
-```typescript
-// 移除元组的第一个元素
-type Tail<T extends any[]> = 
-  T extends [any, ...infer Rest] ? Rest : never;
-
-// 示例
-type TailElements = Tail<[string, number, boolean]>; // [number, boolean]
-```
-
-## 18.5 高级 infer 应用场景
-
-### 18.5.1 从对象中提取特定属性的类型
-
-```typescript
-// 从对象中提取指定键的类型
-type PropertyType<T, K extends keyof T> = T extends { [P in K]: infer R } ? R : never;
-
-// 示例
-interface User {
-  name: string;
-  age: number;
-  address: {
-    street: string;
-    city: string;
-  };
-}
-
-type AddressType = PropertyType<User, 'address'>;
-// 类型为 { street: string; city: string; }
-```
-
-### 18.5.2 提取构造函数的实例类型
-
-```typescript
-// 提取构造函数的实例类型
-type InstanceType<T extends new (...args: any[]) => any> = 
-  T extends new (...args: any[]) => infer R ? R : never;
-
-// 示例
-class Person {
-  name: string;
-  constructor(name: string) {
-    this.name = name;
-  }
-}
-
-type PersonInstance = InstanceType<typeof Person>; // Person
-```
-
-### 18.5.3 提取构造函数的参数类型
-
-```typescript
-// 提取构造函数的参数类型
-type ConstructorParameters<T extends new (...args: any[]) => any> = 
-  T extends new (...args: infer P) => any ? P : never;
-
-// 示例
-type PersonConstructorParams = ConstructorParameters<typeof Person>; // [name: string]
-```
-
-## 18.6 字符串操作与 infer
-
-### 18.6.1 分割字符串字面量类型
-
-```typescript
-// 将字符串分割为前缀和后缀
-type SplitString<S extends string, D extends string> = 
-  S extends `${infer Prefix}${D}${infer Suffix}` ? [Prefix, Suffix] : [S, ""];
-
-// 示例
-type Parts = SplitString<"hello-world", "-">; // ["hello", "world"]
-```
-
-### 18.6.2 替换字符串字面量类型
-
-```typescript
-// 替换字符串中的子字符串
-type ReplaceString<S extends string, From extends string, To extends string> = 
-  S extends `${infer Prefix}${From}${infer Suffix}` 
-    ? `${Prefix}${To}${Suffix}` 
-    : S;
-
-// 示例
-type Replaced = ReplaceString<"hello world", "world", "TypeScript">; 
-// "hello TypeScript"
-```
-
-## 18.7 条件类型分配与 infer
-
-当我们将 `infer` 与联合类型结合使用时，需要了解条件类型分配的行为：
-
-```typescript
-// 从联合类型中提取字符串类型
-type ExtractStringType<T> = T extends infer R 
-  ? R extends string ? R : never 
-  : never;
-
-// 示例
-type Mixed = string | number | boolean;
-type OnlyStrings = ExtractStringType<Mixed>; // string
-```
-
-## 18.8 内置的使用 infer 的工具类型
-
-TypeScript 内置了许多使用 `infer` 的工具类型，例如：
-
-```typescript
-// 内置的 ReturnType - 提取函数返回值类型
-type MyFunc = () => string;
-type MyFuncReturn = ReturnType<MyFunc>; // string
-
-// 内置的 Parameters - 提取函数参数类型元组
-type MyFunc2 = (a: string, b: number) => void;
-type MyFuncParams = Parameters<MyFunc2>; // [string, number]
-
-// 内置的 InstanceType - 提取构造函数实例类型
-class Example {}
-type ExampleInstance = InstanceType<typeof Example>; // Example
-```
-
-## 18.9 实际应用示例
-
-### 18.9.1 类型安全的事件系统
-
-```typescript
-// 事件类型定义
-interface EventMap {
-  click: { x: number; y: number };
-  change: { oldValue: string; newValue: string };
-  submit: { data: Record<string, unknown> };
-}
-
-// 使用 infer 提取事件数据类型
-type EventData<E extends keyof EventMap> = EventMap[E];
-
-// 事件处理器类型
-type EventHandler<E extends keyof EventMap> = (data: EventData<E>) => void;
-
-// 事件系统
-class EventEmitter {
-  private handlers: Partial<{
-    [E in keyof EventMap]: EventHandler<E>[];
-  }> = {};
-
-  // 添加事件监听器
-  on<E extends keyof EventMap>(event: E, handler: EventHandler<E>): void {
-    if (!this.handlers[event]) {
-      this.handlers[event] = [];
-    }
-    (this.handlers[event] as EventHandler<E>[]).push(handler);
-  }
-
-  // 触发事件
-  emit<E extends keyof EventMap>(event: E, data: EventData<E>): void {
-    const handlers = this.handlers[event] as EventHandler<E>[] | undefined;
-    if (handlers) {
-      handlers.forEach(handler => handler(data));
-    }
-  }
-}
-
-// 使用事件系统
-const emitter = new EventEmitter();
-
-// 类型安全的事件监听
-emitter.on("click", ({ x, y }) => {
-  console.log(`Clicked at (${x}, ${y})`);
-});
-
-emitter.on("change", ({ oldValue, newValue }) => {
-  console.log(`Value changed from '${oldValue}' to '${newValue}'`);
-});
-
-// 类型安全的事件触发
-emitter.emit("click", { x: 100, y: 200 });
-emitter.emit("change", { oldValue: "old", newValue: "new" });
-
-// 类型错误示例 - 会在编译时捕获
-// emitter.emit("click", { oldValue: "old", newValue: "new" }); // 错误！
-// emitter.emit("submit", { x: 100, y: 200 }); // 错误！
-```
-
-### 18.9.2 API 响应类型提取
-
-```typescript
-// API 响应类型
-interface ApiResponse<T> {
-  data: T;
-  status: number;
-  message: string;
-}
-
-// 使用 infer 提取 API 响应中的数据类型
-type ExtractApiData<T> = T extends ApiResponse<infer Data> ? Data : never;
-
-// 具体响应类型
-interface UserResponse extends ApiResponse<{ id: number; name: string }> {}
-interface ProductResponse extends ApiResponse<{ id: number; title: string; price: number }> {}
-
-// 提取数据类型
-type UserData = ExtractApiData<UserResponse>; // { id: number; name: string }
-type ProductData = ExtractApiData<ProductResponse>; // { id: number; title: string; price: number }
-
-// 类型安全的 API 处理函数
-function processApiResponse<T>(response: ApiResponse<T>): T {
-  if (response.status >= 200 && response.status < 300) {
-    return response.data;
-  }
-  throw new Error(`API Error: ${response.message}`);
-}
-
-// 使用示例
-const userResponse: UserResponse = {
-  data: { id: 1, name: "John" },
-  status: 200,
-  message: "OK"
-};
-
-const userData = processApiResponse(userResponse);
-console.log(userData.name); // 类型安全访问
-```
-
-## 18.10 最佳实践与注意事项
-
-1. **使用描述性名称**：为使用 `infer` 声明的类型变量使用描述性名称，例如 `infer ReturnType` 而不是 `infer R`。
-
-2. **避免过度嵌套的条件类型**：过于复杂的嵌套条件类型可能难以理解和维护。
-
-3. **结合类型约束**：将 `infer` 与类型约束结合使用，可以更精确地提取所需类型。
-
-4. **测试边缘情况**：确保类型工具能够正确处理空类型、联合类型等边缘情况。
-
-5. **适当使用递归条件类型**：对于嵌套或递归数据结构，递归条件类型可能是必要的，但要注意可能的类型计算限制。
-
-6. **了解分配条件类型**：当条件类型与联合类型一起使用时，条件类型会分配到联合的每个成员上。
-
-通过掌握 `infer` 关键字，你可以创建强大的类型工具来提取、转换和操作类型，使 TypeScript 代码更加类型安全和表达力更强。无论是处理函数类型、对象类型、字符串操作还是复杂的嵌套数据结构，`infer` 都是一个不可或缺的工具。
-
-# 19 扁平模块化属性名
-
-扁平模块化属性名是 TypeScript 中一种强大的类型操作技术，它允许我们将嵌套的属性结构转换为扁平化的字符串路径。这在处理大型模块化状态管理、事件系统或配置对象时特别有用。
-
-## 19.1 基本概念
-
-扁平模块化属性名使用模板字面量类型和映射类型，将多层嵌套的对象结构转换成单层的字符串键路径，通常使用分隔符（如 "/"）连接。
-
-```typescript
-// 扁平模块化属性名
-type Modules = {
-  menu: {
-    setActiveIndex: (index: string) => string
-    setCollapse: (index: string) => string
-  }
-  tabs: {
-    seteditableTabsValue: (editValue: string) => void
-    setTabs: (index: string) => void
-    setTabsList: (index: string) => void
-  }
-}
-
-type MB<T, U> = `${T & string}/${U & string}`
-
-type ModulesSpliceKeys<T> = {
-  [key in keyof T]: MB<key, keyof T[key]>
-}[keyof T]
-// 这是关键点，[keyof T] 是在从上面创建的映射类型中提取所有属性值，并将它们合并为一个联合类型。
-
-type TestResult = ModulesSpliceKeys<Modules>
-// 结果：type TestResult = "menu/setActiveIndex" | "menu/setCollapse" | "tabs/seteditableTabsValue" | "tabs/setTabs" | "tabs/setTabsList"
-
-type Test = {
-  a: '1' | '2'
-  b: '3' | '4'
-}
-
-type Test1 = Test[keyof Test] // 结果：type Test1 = "1" | "2" | "3" | "4"
-```
-
-## 19.2 核心理解
-
-上面示例的核心工作原理是：
-
-1. `MB<T, U>` 是一个模板字面量类型，用于连接两个类型参数，使用 `/` 作为分隔符
-2. `ModulesSpliceKeys<T>` 定义了一个映射类型，它遍历 T 的每个键
-3. 对于每个键，使用 `MB<key, keyof T[key]>` 来生成模块化路径
-4. `[keyof T]` 索引访问语法从映射类型中提取所有值，得到一个联合类型
-
-这样，原本的嵌套结构就被转换成了扁平化的路径字符串联合类型。
-
-## 19.3 扩展示例
-
-### 19.3.1 处理更深层次的嵌套
-
-我们可以扩展这个技术来处理更深层次的嵌套结构：
-
-```typescript
-// 处理任意深度的嵌套结构
-type NestedModules = {
-  user: {
-    profile: {
-      update: (data: any) => void
-      view: (id: string) => void
-    }
-    settings: {
-      theme: {
-        change: (theme: string) => void
-      }
-    }
-  }
-  products: {
-    list: (filter: any) => void
-    details: (id: string) => void
-  }
-}
-
-// 处理两层嵌套
-type TwoLevelKeys<T> = {
-  [K1 in keyof T]: {
-    [K2 in keyof T[K1]]: `${K1 & string}/${K2 & string}`
-  }[keyof T[K1]]
-}[keyof T]
-
-// 处理三层嵌套
-type ThreeLevelKeys<T> = {
-  [K1 in keyof T]: {
-    [K2 in keyof T[K1]]: {
-      [K3 in keyof T[K1][K2]]: `${K1 & string}/${K2 & string}/${K3 & string}`
-    }[keyof T[K1][K2]]
-  }[keyof T[K1]]
-}[keyof T]
-
-type TwoLevelResult = TwoLevelKeys<NestedModules>;
-// 结果: "user/profile" | "user/settings" | "products/list" | "products/details"
-
-type ThreeLevelResult = ThreeLevelKeys<NestedModules>;
-// 结果: "user/profile/update" | "user/profile/view" | "user/settings/theme" | "products/list" | "products/details"
-```
-
-### 19.3.2 递归处理任意深度
-
-使用条件类型和递归，我们可以处理任意深度的嵌套结构：
-
-```typescript
-type Primitive = string | number | boolean | bigint | symbol | null | undefined;
-type IsObject<T> = T extends object ? (T extends Primitive ? false : true) : false;
-
-// 递归生成路径，使用 P 参数记录当前路径
-type RecursivePaths<T, P extends string = ''> = {
-  [K in keyof T]: IsObject<T[K]> extends true
-    ? RecursivePaths<T[K], `${P}${P extends '' ? '' : '/'}${K & string}`>
-    : `${P}${P extends '' ? '' : '/'}${K & string}`;
-}[keyof T];
-
-type RecursiveResult = RecursivePaths<NestedModules>;
-// 包含所有嵌套层级的路径
-```
-
-## 19.4 实际应用场景
-
-### 19.4.1 状态管理中的路径类型
-
-在使用 Redux 或其他状态管理库时，扁平模块化属性名可以用来类型安全地访问嵌套状态：
-
-```typescript
-// 应用状态定义
-type AppState = {
-  auth: {
-    user: {
-      id: string;
-      name: string;
-    } | null;
-    isLoggedIn: boolean;
-  };
-  ui: {
-    theme: 'light' | 'dark';
-    sidebar: {
-      isOpen: boolean;
-      width: number;
-    };
-  };
-};
-
-// 生成所有可能的状态路径
-type StateKeys<T> = {
-  [K in keyof T]: T[K] extends object
-    ? `${K & string}` | `${K & string}.${StateKeys<T[K]>}`
-    : `${K & string}`;
-}[keyof T];
-
-type AppStateKeys = StateKeys<AppState>;
-// 结果包含: "auth" | "auth.user" | "auth.user.id" | "auth.user.name" | "auth.isLoggedIn" | ...
-
-// 类型安全的状态访问函数
-function getStateValue<T, P extends StateKeys<T>>(
-  state: T,
-  path: P
-): any {
-  return path.split('.').reduce((obj, key) => obj?.[key as keyof typeof obj], state as any);
-}
-
-// 使用示例
-const state: AppState = {/* ... */};
-const userName = getStateValue(state, "auth.user.name");
-```
-
-### 19.4.2 事件总线系统
-
-扁平模块化属性名可用于创建类型安全的事件总线系统：
-
-```typescript
-// 定义事件映射
-type EventMap = {
-  user: {
-    login: { id: string; name: string };
-    logout: { reason: string };
-  };
-  system: {
-    error: { code: number; message: string };
-    notification: { title: string; body: string };
-  };
-};
-
-// 生成事件路径
-type EventPath<T> = {
-  [K in keyof T]: {
-    [E in keyof T[K]]: `${K & string}/${E & string}`;
-  }[keyof T[K]];
-}[keyof T];
-
-// 获取特定事件的数据类型
-type EventData<T, P extends EventPath<T>> = P extends `${infer M}/${infer E}`
-  ? M extends keyof T
-    ? E extends keyof T[M]
-      ? T[M][E]
-      : never
-    : never
-  : never;
-
-// 事件总线实现
-class EventBus<T> {
-  private listeners: Record<string, Function[]> = {};
-
-  // 订阅事件
-  on<P extends EventPath<T>>(path: P, callback: (data: EventData<T, P>) => void) {
-    if (!this.listeners[path]) {
-      this.listeners[path] = [];
-    }
-    this.listeners[path].push(callback);
-  }
-
-  // 触发事件
-  emit<P extends EventPath<T>>(path: P, data: EventData<T, P>) {
-    const callbacks = this.listeners[path] || [];
-    callbacks.forEach(callback => callback(data));
-  }
-}
-
-// 使用事件总线
-const bus = new EventBus<EventMap>();
-
-bus.on("user/login", (data) => {
-  // data 类型为 { id: string; name: string }
-  console.log(`User ${data.name} logged in`);
-});
-
-bus.emit("user/login", { id: "123", name: "Alice" });
-```
-
-## 19.5 最佳实践与技巧
-
-1. **使用分隔符的一致性**：在整个应用中使用一致的分隔符（如 `/` 或 `.`）
-
-2. **性能考虑**：复杂的嵌套类型可能导致 TypeScript 编译器性能问题，对于非常复杂的结构，可能需要分解为更小的类型
-
-3. **结合其他类型工具**：扁平模块化属性名可以与 `Pick`、`Omit` 等工具类型结合使用，创建更强大的类型系统
-
-4. **生成类型和值的映射**：使用类型生成实际的路径字符串映射对象，确保代码和类型的一致性
-
-```typescript
-// 生成路径常量对象
-const createPathConstants<T>() {
-  // 实现根据类型 T 生成实际路径常量的逻辑
-  // ...
-}
-
-// 使用示例
-const PATHS = createPathConstants<Modules>();
-dispatch(PATHS.menu.setActiveIndex, "1"); // 类型安全的路径字符串
-```
-
-扁平模块化属性名是 TypeScript 类型系统中的一项强大技术，它可以帮助我们在处理复杂的嵌套结构时保持类型安全，同时简化 API 设计和状态访问。通过将多层嵌套的对象结构转换为扁平化的字符串路径，我们可以更轻松地处理模块化的应用架构。
-
 # 20 Record
 
 Record 是 TypeScript 中一个非常实用的工具类型，它用于创建一个对象类型，其中所有键都是指定类型，所有值都是另一个指定类型。Record 类型可以帮助我们更安全地定义键值对集合，特别适用于字典、映射或对象字面量。
@@ -916,3 +311,614 @@ type RecursiveRecord = {
 5. **考虑扩展性**：如果对象的键可能会增加，考虑使用更通用的索引签名或将 Record 与其他类型联合。
 
 Record 是 TypeScript 中一个简单但功能强大的工具类型，掌握它可以帮助你更好地组织和类型化基于对象的数据结构，增强代码的类型安全性和可维护性。
+
+# 21 装饰器
+
+装饰器是一种特殊类型的声明，它能够被附加到类声明、方法、访问器、属性或参数上。装饰器使用 `@expression` 形式，其中 `expression` 必须计算为一个函数，该函数将在运行时被调用，提供有关被装饰声明的信息。
+
+## 21.1 装饰器基础
+
+装饰器是实验性的功能，需要在 `tsconfig.json` 中启用：
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
+### 21.1.1 装饰器的基本结构
+
+装饰器是一个函数，接收特定的参数，具体参数取决于装饰器的类型：
+
+```typescript
+// 类装饰器的基本结构
+function classDecorator(constructor: Function) {
+  // 可以修改或增强类
+  console.log(`类 ${constructor.name} 已被装饰`);
+}
+
+// 使用装饰器
+@classDecorator
+class Example {
+  // 类的内容
+}
+```
+
+## 21.2 类装饰器
+
+类装饰器应用于类的构造函数，可以用来观察、修改或替换类定义。
+
+```typescript
+// 类装饰器
+function sealed(constructor: Function) {
+  Object.seal(constructor);
+  Object.seal(constructor.prototype);
+  console.log(`类 ${constructor.name} 已被密封`);
+}
+
+@sealed
+class Greeter {
+  greeting: string;
+  
+  constructor(message: string) {
+    this.greeting = message;
+  }
+  
+  greet() {
+    return "Hello, " + this.greeting;
+  }
+}
+```
+
+### 21.2.1 工厂装饰器
+
+装饰器工厂是一个返回装饰器的函数，允许我们自定义装饰器的行为：
+
+```typescript
+// 装饰器工厂
+function logger(prefix: string) {
+  return function(constructor: Function) {
+    console.log(`${prefix} ${constructor.name}`);
+  };
+}
+
+@logger("创建了类:")
+class Person {
+  name: string;
+  
+  constructor(name: string) {
+    this.name = name;
+  }
+}
+```
+
+### 21.2.2 替换构造函数的类装饰器
+
+类装饰器可以返回一个新的构造函数来替换原始类：
+
+```typescript
+// 替换构造函数的类装饰器
+function reportableClassDecorator<T extends { new (...args: any[]): {} }>(constructor: T) {
+  return class extends constructor {
+    reportingURL = "http://example.com";
+    
+    report() {
+      console.log(`Reporting to ${this.reportingURL}`);
+    }
+  };
+}
+
+@reportableClassDecorator
+class BugReport {
+  type = "report";
+  title: string;
+  
+  constructor(t: string) {
+    this.title = t;
+  }
+}
+
+const bug = new BugReport("需要修复的错误");
+(bug as any).report(); // 输出: Reporting to http://example.com
+```
+
+## 21.3 方法装饰器
+
+方法装饰器应用于类的方法上，可以用于观察、修改或替换方法定义。
+
+```typescript
+// 方法装饰器
+function enumerable(value: boolean) {
+  return function(
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
+    descriptor.enumerable = value;
+  };
+}
+
+class Greeter {
+  greeting: string;
+  
+  constructor(message: string) {
+    this.greeting = message;
+  }
+  
+  @enumerable(false)
+  greet() {
+    return "Hello, " + this.greeting;
+  }
+}
+```
+
+### 21.3.1 方法装饰器参数解析
+
+方法装饰器接收三个参数：
+1. `target`: 静态成员的类构造函数或实例成员的原型
+2. `propertyKey`: 方法名称
+3. `descriptor`: 属性描述符，与 `Object.defineProperty` 中使用的相同
+
+### 21.3.2 修改方法实现的装饰器
+
+```typescript
+// 修改方法实现的装饰器
+function log(
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+) {
+  const originalMethod = descriptor.value;
+  
+  descriptor.value = function(...args: any[]) {
+    console.log(`调用 ${propertyKey} 方法，参数: ${JSON.stringify(args)}`);
+    const result = originalMethod.apply(this, args);
+    console.log(`${propertyKey} 方法返回: ${JSON.stringify(result)}`);
+    return result;
+  };
+  
+  return descriptor;
+}
+
+class Calculator {
+  @log
+  add(a: number, b: number): number {
+    return a + b;
+  }
+}
+
+const calc = new Calculator();
+calc.add(1, 2); // 输出日志并返回3
+```
+
+## 21.4 访问器装饰器
+
+访问器装饰器应用于属性的 get 或 set 访问器，与方法装饰器类似。
+
+```typescript
+// 访问器装饰器
+function configurable(value: boolean) {
+  return function(
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
+    descriptor.configurable = value;
+  };
+}
+
+class Point {
+  private _x: number;
+  private _y: number;
+  
+  constructor(x: number, y: number) {
+    this._x = x;
+    this._y = y;
+  }
+  
+  @configurable(false)
+  get x() {
+    return this._x;
+  }
+  
+  @configurable(false)
+  get y() {
+    return this._y;
+  }
+}
+```
+
+## 21.5 属性装饰器
+
+属性装饰器应用于类的属性，接收两个参数：
+1. `target`: 静态成员的类构造函数或实例成员的原型
+2. `propertyKey`: 属性名称
+
+```typescript
+// 属性装饰器
+function format(formatString: string) {
+  return function(target: any, propertyKey: string) {
+    // 创建一个私有属性来存储原始值
+    const privatePropKey = `_${propertyKey}`;
+    
+    // 替换属性的getter和setter
+    Object.defineProperty(target, propertyKey, {
+      get: function() {
+        const value = this[privatePropKey];
+        if (formatString === 'uppercase') {
+          return value.toUpperCase();
+        }
+        return value;
+      },
+      set: function(value: string) {
+        this[privatePropKey] = value;
+      },
+      enumerable: true,
+      configurable: true
+    });
+  };
+}
+
+class Greeter {
+  @format('uppercase')
+  greeting: string;
+  
+  constructor(message: string) {
+    this.greeting = message;
+  }
+  
+  greet() {
+    return `Hello, ${this.greeting}`;
+  }
+}
+
+const greeter = new Greeter('world');
+console.log(greeter.greeting); // 输出: "WORLD"
+console.log(greeter.greet()); // 输出: "Hello, WORLD"
+```
+
+## 21.6 参数装饰器
+
+参数装饰器应用于函数或构造函数的参数，接收三个参数：
+1. `target`: 静态成员的类构造函数或实例成员的原型
+2. `propertyKey`: 方法名称
+3. `parameterIndex`: 参数在函数参数列表中的索引
+
+```typescript
+// 参数装饰器
+function required(target: any, propertyKey: string, parameterIndex: number) {
+  // 获取原始方法
+  const method = target[propertyKey];
+  
+  // 替换方法实现
+  target[propertyKey] = function(...args: any[]) {
+    // 检查指定的参数是否存在
+    if (args[parameterIndex] === undefined || args[parameterIndex] === null) {
+      throw new Error(`参数 ${parameterIndex} 是必需的`);
+    }
+    return method.apply(this, args);
+  };
+}
+
+class UserService {
+  login(username: string, @required password: string) {
+    // 登录逻辑
+    return `登录: ${username}, ${password}`;
+  }
+}
+
+const userService = new UserService();
+console.log(userService.login("admin", "123456")); // 正常工作
+// userService.login("admin", null); // 抛出错误: 参数 1 是必需的
+```
+
+## 21.7 装饰器执行顺序
+
+多个装饰器同时应用于一个声明时，它们的执行顺序如下：
+
+1. 从上到下计算装饰器表达式
+2. 得到的结果会从下到上调用
+
+```typescript
+function first() {
+  console.log("first(): 计算装饰器表达式");
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("first(): 调用装饰器函数");
+  };
+}
+
+function second() {
+  console.log("second(): 计算装饰器表达式");
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("second(): 调用装饰器函数");
+  };
+}
+
+class ExampleClass {
+  @first()
+  @second()
+  method() {}
+}
+
+// 输出:
+// first(): 计算装饰器表达式
+// second(): 计算装饰器表达式
+// second(): 调用装饰器函数
+// first(): 调用装饰器函数
+```
+
+对于类中不同成员上的装饰器的执行顺序是：
+
+1. 参数装饰器，然后方法装饰器，然后访问器或属性装饰器应用于实例成员
+2. 参数装饰器，然后方法装饰器，然后访问器或属性装饰器应用于静态成员
+3. 类装饰器
+
+## 21.8 实际应用场景
+
+### 21.8.1 依赖注入
+
+```typescript
+// 简单的依赖注入实现
+const serviceSymbol = Symbol("services");
+
+// 服务装饰器
+function Service() {
+  return function(constructor: Function) {
+    Reflect.defineMetadata("isService", true, constructor);
+  };
+}
+
+// 注入装饰器
+function Inject(serviceName: string) {
+  return function(target: any, propertyKey: string) {
+    const services = Reflect.getOwnMetadata(serviceSymbol, target) || {};
+    services[propertyKey] = serviceName;
+    Reflect.defineMetadata(serviceSymbol, services, target);
+  };
+}
+
+@Service()
+class UserService {
+  getUserDetails(id: string) {
+    return { id, name: "User" + id };
+  }
+}
+
+@Service()
+class ProductService {
+  getProductDetails(id: string) {
+    return { id, name: "Product" + id };
+  }
+}
+
+class AppController {
+  @Inject("UserService")
+  private userService: UserService;
+  
+  @Inject("ProductService")
+  private productService: ProductService;
+  
+  getUserProduct(userId: string, productId: string) {
+    const user = this.userService.getUserDetails(userId);
+    const product = this.productService.getProductDetails(productId);
+    return { user, product };
+  }
+}
+```
+
+### 21.8.2 路由和中间件
+
+```typescript
+// 简单的路由装饰器
+function Route(path: string) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    if (!target.routes) {
+      target.routes = [];
+    }
+    
+    target.routes.push({
+      path,
+      method: propertyKey,
+      handler: descriptor.value
+    });
+  };
+}
+
+// 中间件装饰器
+function Use(middleware: Function) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    if (!target.middlewares) {
+      target.middlewares = {};
+    }
+    
+    if (!target.middlewares[propertyKey]) {
+      target.middlewares[propertyKey] = [];
+    }
+    
+    target.middlewares[propertyKey].push(middleware);
+  };
+}
+
+// 权限检查中间件
+function checkAdmin(req: any, res: any, next: Function) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).send('禁止访问');
+  }
+  next();
+}
+
+class UserController {
+  @Route('/users')
+  getUsers(req: any, res: any) {
+    res.send('返回所有用户');
+  }
+  
+  @Route('/users/admin')
+  @Use(checkAdmin)
+  getAdminPanel(req: any, res: any) {
+    res.send('管理员面板');
+  }
+}
+```
+
+### 21.8.3 ORM 和数据验证
+
+```typescript
+// 实体装饰器
+function Entity(tableName: string) {
+  return function(constructor: Function) {
+    constructor.prototype.tableName = tableName;
+  };
+}
+
+// 列装饰器
+function Column(options: { type: string; primary?: boolean }) {
+  return function(target: any, propertyKey: string) {
+    if (!target.columns) {
+      target.columns = {};
+    }
+    
+    target.columns[propertyKey] = options;
+  };
+}
+
+// 验证装饰器
+function Length(min: number, max: number) {
+  return function(target: any, propertyKey: string) {
+    if (!target.validations) {
+      target.validations = {};
+    }
+    
+    if (!target.validations[propertyKey]) {
+      target.validations[propertyKey] = [];
+    }
+    
+    target.validations[propertyKey].push({
+      type: 'length',
+      min,
+      max,
+      validate: (value: string) => value.length >= min && value.length <= max
+    });
+  };
+}
+
+@Entity('users')
+class User {
+  @Column({ type: 'int', primary: true })
+  id: number;
+  
+  @Column({ type: 'varchar' })
+  @Length(3, 50)
+  name: string;
+  
+  @Column({ type: 'varchar' })
+  @Length(5, 100)
+  email: string;
+  
+  constructor(id: number, name: string, email: string) {
+    this.id = id;
+    this.name = name;
+    this.email = email;
+  }
+}
+```
+
+## 21.9 装饰器与反射元数据
+
+使用 `reflect-metadata` 库可以增强装饰器的功能，允许存储和检索元数据：
+
+```typescript
+// 安装: npm install reflect-metadata
+
+import "reflect-metadata";
+
+// 类型装饰器与元数据
+function Typed() {
+  return function(target: any, propertyKey: string) {
+    const type = Reflect.getMetadata("design:type", target, propertyKey);
+    console.log(`${propertyKey} 的类型是: ${type.name}`);
+  };
+}
+
+class Example {
+  @Typed()
+  name: string;
+  
+  @Typed()
+  age: number;
+}
+
+// 输出:
+// name 的类型是: String
+// age 的类型是: Number
+```
+
+## 21.10 装饰器的限制与最佳实践
+
+### 21.10.1 限制
+
+1. 装饰器是实验性功能，API 可能会在未来版本中改变
+2. 装饰器无法访问构造函数参数属性
+3. 装饰器在运行时执行，不是在编译时
+4. 方法装饰器不能改变方法的参数类型
+
+### 21.10.2 最佳实践
+
+1. 使用装饰器工厂提供自定义参数
+2. 保持装饰器的单一职责
+3. 使用反射元数据增强类型信息
+4. 避免在装饰器中产生副作用
+5. 为装饰器提供完善的类型定义和文档
+6. 在关键代码路径上进行性能测试，因为装饰器可能引入性能开销
+
+## 21.11 TypeScript 5.0+ 装饰器更新
+
+TypeScript 5.0 引入了新的装饰器标准，与旧版实验性装饰器有一些重要区别：
+
+```typescript
+// 新的类装饰器语法
+function logged(value: any, context: ClassDecoratorContext) {
+  if (context.kind === "class") {
+    return class extends value {
+      constructor(...args: any[]) {
+        super(...args);
+        console.log(`实例化类: ${context.name}`);
+      }
+    };
+  }
+  return value;
+}
+
+@logged
+class Person {
+  name: string;
+  
+  constructor(name: string) {
+    this.name = name;
+  }
+}
+
+// 新的方法装饰器语法
+function logged(originalMethod: any, context: ClassMethodDecoratorContext) {
+  if (context.kind === "method") {
+    return function(this: any, ...args: any[]) {
+      console.log(`调用方法: ${String(context.name)}`);
+      return originalMethod.apply(this, args);
+    };
+  }
+  return originalMethod;
+}
+
+class Calculator {
+  @logged
+  add(a: number, b: number): number {
+    return a + b;
+  }
+}
+```
+
+新的装饰器标准提供了更好的类型安全性和更灵活的应用方式。
+
+装饰器是 TypeScript 中非常强大的功能，能够帮助实现面向切面编程、依赖注入、元编程等高级概念。尽管仍在实验阶段，但已在多个主流框架中得到广泛应用，如 Angular、NestJS 和 TypeORM 等。
