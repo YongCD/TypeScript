@@ -7575,168 +7575,93 @@ Record 是 TypeScript 中一个简单但功能强大的工具类型，掌握它�
 
 # 21 装饰器
 
-装饰器是一种特殊类型的声明，它能够被附加到类声明、方法、访问器、属性或参数上。装饰器使用 `@expression` 形式，其中 `expression` 必须计算为一个函数，该函数将在运行时被调用，提供有关被装饰声明的信息。
+装饰器(Decorators)是一种特殊类型的声明，它能够被附加到类声明、方法、访问符、属性或参数上。装饰器使用 `@expression` 形式，`expression` 必须求值为一个函数，该函数在运行时被调用，被装饰的声明信息会被作为参数传入。
 
 ## 21.1 装饰器基础
 
-装饰器是实验性的功能，需要在 `tsconfig.json` 中启用：
+### 21.1.1 启用装饰器
+
+在 TypeScript 中使用装饰器需要在 `tsconfig.json` 中启用相关选项：
 
 ```json
 {
   "compilerOptions": {
-    "experimentalDecorators": true
+    "target": "ES5",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true // 可选，用于反射元数据
   }
 }
 ```
 
-### 21.1.1 装饰器的基本结构
+### 21.1.2 装饰器执行时机
 
-装饰器是一个函数，接收特定的参数，具体参数取决于装饰器的类型：
+装饰器是在类定义时执行的函数，而不是在实例化类时。
 
 ```typescript
-// 类装饰器的基本结构
-function classDecorator(constructor: Function) {
-  // 可以修改或增强类
-  console.log(`类 ${constructor.name} 已被装饰`);
+function log(target: any) {
+  console.log("类装饰器被执行");
 }
 
-// 使用装饰器
-@classDecorator
-class Example {
-  // 类的内容
+@log
+class MyClass {
+  // 类定义
 }
+
+// 输出 "类装饰器被执行"，即使没有实例化类
 ```
 
-## 21.2 类装饰器
+## 21.2 装饰器类型
 
-类装饰器应用于类的构造函数，可以用来观察、修改或替换类定义。
+TypeScript 支持五种类型的装饰器：
 
-```typescript
-// 类装饰器
-function sealed(constructor: Function) {
-  Object.seal(constructor);
-  Object.seal(constructor.prototype);
-  console.log(`类 ${constructor.name} 已被密封`);
-}
+1. 类装饰器
+2. 方法装饰器
+3. 访问器装饰器
+4. 属性装饰器
+5. 参数装饰器
 
-@sealed
-class Greeter {
-  greeting: string;
-  
-  constructor(message: string) {
-    this.greeting = message;
-  }
-  
-  greet() {
-    return "Hello, " + this.greeting;
-  }
-}
-```
+### 21.2.1 类装饰器
 
-### 21.2.1 工厂装饰器
-
-装饰器工厂是一个返回装饰器的函数，允许我们自定义装饰器的行为：
+类装饰器应用于类构造函数，可以用来监视、修改或替换类定义。
 
 ```typescript
-// 装饰器工厂
-function logger(prefix: string) {
-  return function(constructor: Function) {
-    console.log(`${prefix} ${constructor.name}`);
-  };
-}
-
-@logger("创建了类:")
-class Person {
-  name: string;
-  
-  constructor(name: string) {
-    this.name = name;
-  }
-}
-```
-
-### 21.2.2 替换构造函数的类装饰器
-
-类装饰器可以返回一个新的构造函数来替换原始类：
-
-```typescript
-// 替换构造函数的类装饰器
-function reportableClassDecorator<T extends { new (...args: any[]): {} }>(constructor: T) {
+function classDecorator<T extends { new (...args: any[]): {} }>(constructor: T) {
   return class extends constructor {
-    reportingURL = "http://example.com";
-    
-    report() {
-      console.log(`Reporting to ${this.reportingURL}`);
-    }
+    newProperty = "新属性";
+    hello = "重写的属性";
   };
 }
 
-@reportableClassDecorator
-class BugReport {
-  type = "report";
-  title: string;
-  
-  constructor(t: string) {
-    this.title = t;
-  }
-}
-
-const bug = new BugReport("需要修复的错误");
-(bug as any).report(); // 输出: Reporting to http://example.com
-```
-
-## 21.3 方法装饰器
-
-方法装饰器应用于类的方法上，可以用于观察、修改或替换方法定义。
-
-```typescript
-// 方法装饰器
-function enumerable(value: boolean) {
-  return function(
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
-    descriptor.enumerable = value;
-  };
-}
-
+@classDecorator
 class Greeter {
-  greeting: string;
-  
-  constructor(message: string) {
-    this.greeting = message;
-  }
-  
-  @enumerable(false)
-  greet() {
-    return "Hello, " + this.greeting;
+  property = "原始属性";
+  hello: string;
+  constructor(m: string) {
+    this.hello = m;
   }
 }
+
+const greeter = new Greeter("世界");
+console.log(greeter.property); // 输出 "原始属性"
+console.log(greeter.hello); // 输出 "重写的属性" 
+console.log((greeter as any).newProperty); // 输出 "新属性"
 ```
 
-### 21.3.1 方法装饰器参数解析
+### 21.2.2 方法装饰器
 
-方法装饰器接收三个参数：
-1. `target`: 静态成员的类构造函数或实例成员的原型
-2. `propertyKey`: 方法名称
-3. `descriptor`: 属性描述符，与 `Object.defineProperty` 中使用的相同
-
-### 21.3.2 修改方法实现的装饰器
+方法装饰器应用于类的方法上，可以用来监视、修改或替换方法定义。
 
 ```typescript
-// 修改方法实现的装饰器
-function log(
-  target: any,
-  propertyKey: string,
-  descriptor: PropertyDescriptor
-) {
+function methodDecorator(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  // 保存原始方法
   const originalMethod = descriptor.value;
   
+  // 修改方法实现
   descriptor.value = function(...args: any[]) {
-    console.log(`调用 ${propertyKey} 方法，参数: ${JSON.stringify(args)}`);
+    console.log(`调用方法 ${propertyKey} 参数:`, args);
+    // 调用原始方法并返回结果
     const result = originalMethod.apply(this, args);
-    console.log(`${propertyKey} 方法返回: ${JSON.stringify(result)}`);
+    console.log(`方法 ${propertyKey} 返回值:`, result);
     return result;
   };
   
@@ -7744,156 +7669,200 @@ function log(
 }
 
 class Calculator {
-  @log
+  @methodDecorator
   add(a: number, b: number): number {
     return a + b;
   }
 }
 
 const calc = new Calculator();
-calc.add(1, 2); // 输出日志并返回3
+calc.add(1, 2);
+// 输出:
+// 调用方法 add 参数: [1, 2]
+// 方法 add 返回值: 3
 ```
 
-## 21.4 访问器装饰器
+### 21.2.3 访问器装饰器
 
-访问器装饰器应用于属性的 get 或 set 访问器，与方法装饰器类似。
+访问器装饰器应用于访问器的属性描述符，可用于监听、修改或替换访问器的定义。
 
 ```typescript
-// 访问器装饰器
-function configurable(value: boolean) {
-  return function(
-    target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
+function accessorDecorator(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  // 获取原始 getter
+  const originalGetter = descriptor.get;
+  
+  // 修改 getter
+  descriptor.get = function() {
+    console.log(`获取属性 ${propertyKey} 的值`);
+    // 调用原始 getter
+    return originalGetter?.call(this);
+  };
+  
+  return descriptor;
+}
+
+class Person {
+  private _name: string;
+  
+  constructor(name: string) {
+    this._name = name;
+  }
+  
+  @accessorDecorator
+  get name(): string {
+    return this._name;
+  }
+  
+  set name(value: string) {
+    this._name = value;
+  }
+}
+
+const person = new Person("张三");
+console.log(person.name);
+// 输出:
+// 获取属性 name 的值
+// 张三
+```
+
+### 21.2.4 属性装饰器
+
+属性装饰器声明在属性声明之前，可用于监听类中属性的变化。
+
+```typescript
+function propertyDecorator(target: any, propertyKey: string) {
+  // 在这里我们可以使用属性名称做一些事情
+  
+  // 创建一个新的属性，前缀为 _
+  const newKey = `_${propertyKey}`;
+  
+  // 通过重新定义属性，添加日志或校验
+  Object.defineProperty(target, propertyKey, {
+    get() {
+      console.log(`获取属性 ${propertyKey} 的值`);
+      return this[newKey];
+    },
+    set(value: any) {
+      console.log(`设置属性 ${propertyKey} 的值为 ${value}`);
+      this[newKey] = value;
+    },
+    enumerable: true,
+    configurable: true
+  });
+}
+
+class Product {
+  @propertyDecorator
+  price: number;
+  
+  constructor(price: number) {
+    this.price = price;
+  }
+}
+
+const product = new Product(100);
+product.price = 200;
+console.log(product.price);
+// 输出:
+// 设置属性 price 的值为 100
+// 设置属性 price 的值为 200
+// 获取属性 price 的值
+// 200
+```
+
+### 21.2.5 参数装饰器
+
+参数装饰器应用于类构造函数或方法声明的参数之前，可以为方法参数添加额外的元数据。
+
+```typescript
+function paramDecorator(target: any, methodName: string, paramIndex: number) {
+  console.log(`方法 ${methodName} 的第 ${paramIndex} 个参数被装饰`);
+  
+  // 可以存储参数元数据
+  const existingParameters: number[] = Reflect.getOwnMetadata("custom:parameters", target, methodName) || [];
+  existingParameters.push(paramIndex);
+  Reflect.defineMetadata("custom:parameters", existingParameters, target, methodName);
+}
+
+class OrderService {
+  placeOrder(
+    @paramDecorator orderId: string,
+    @paramDecorator quantity: number
   ) {
-    descriptor.configurable = value;
-  };
+    console.log(`下单: ${orderId}, 数量: ${quantity}`);
+  }
 }
 
-class Point {
-  private _x: number;
-  private _y: number;
-  
-  constructor(x: number, y: number) {
-    this._x = x;
-    this._y = y;
-  }
-  
-  @configurable(false)
-  get x() {
-    return this._x;
-  }
-  
-  @configurable(false)
-  get y() {
-    return this._y;
-  }
-}
+const orderService = new OrderService();
+orderService.placeOrder("ORD-123", 5);
+// 输出:
+// 方法 placeOrder 的第 0 个参数被装饰
+// 方法 placeOrder 的第 1 个参数被装饰
+// 下单: ORD-123, 数量: 5
 ```
 
-## 21.5 属性装饰器
+## 21.3 装饰器工厂
 
-属性装饰器应用于类的属性，接收两个参数：
-1. `target`: 静态成员的类构造函数或实例成员的原型
-2. `propertyKey`: 属性名称
+装饰器工厂是一个函数，它返回一个装饰器函数，这样可以让我们传入参数来定制装饰器的行为。
 
 ```typescript
-// 属性装饰器
-function format(formatString: string) {
-  return function(target: any, propertyKey: string) {
-    // 创建一个私有属性来存储原始值
-    const privatePropKey = `_${propertyKey}`;
+function logWithPrefix(prefix: string) {
+  // 返回装饰器函数
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    // 保存原始方法
+    const originalMethod = descriptor.value;
     
-    // 替换属性的getter和setter
-    Object.defineProperty(target, propertyKey, {
-      get: function() {
-        const value = this[privatePropKey];
-        if (formatString === 'uppercase') {
-          return value.toUpperCase();
-        }
-        return value;
-      },
-      set: function(value: string) {
-        this[privatePropKey] = value;
-      },
-      enumerable: true,
-      configurable: true
-    });
+    // 修改方法
+    descriptor.value = function(...args: any[]) {
+      console.log(`${prefix} 调用方法 ${propertyKey}`);
+      return originalMethod.apply(this, args);
+    };
+    
+    return descriptor;
   };
 }
 
-class Greeter {
-  @format('uppercase')
-  greeting: string;
-  
-  constructor(message: string) {
-    this.greeting = message;
+class TaskManager {
+  @logWithPrefix("TASK")
+  runTask(taskName: string): void {
+    console.log(`执行任务: ${taskName}`);
   }
   
-  greet() {
-    return `Hello, ${this.greeting}`;
+  @logWithPrefix("DEBUG")
+  debugTask(taskName: string): void {
+    console.log(`调试任务: ${taskName}`);
   }
 }
 
-const greeter = new Greeter('world');
-console.log(greeter.greeting); // 输出: "WORLD"
-console.log(greeter.greet()); // 输出: "Hello, WORLD"
+const manager = new TaskManager();
+manager.runTask("数据备份");
+manager.debugTask("性能检测");
+// 输出:
+// TASK 调用方法 runTask
+// 执行任务: 数据备份
+// DEBUG 调用方法 debugTask
+// 调试任务: 性能检测
 ```
 
-## 21.6 参数装饰器
+## 21.4 装饰器组合
 
-参数装饰器应用于函数或构造函数的参数，接收三个参数：
-1. `target`: 静态成员的类构造函数或实例成员的原型
-2. `propertyKey`: 方法名称
-3. `parameterIndex`: 参数在函数参数列表中的索引
+多个装饰器可以应用到同一个声明上，它们的执行顺序是：
 
-```typescript
-// 参数装饰器
-function required(target: any, propertyKey: string, parameterIndex: number) {
-  // 获取原始方法
-  const method = target[propertyKey];
-  
-  // 替换方法实现
-  target[propertyKey] = function(...args: any[]) {
-    // 检查指定的参数是否存在
-    if (args[parameterIndex] === undefined || args[parameterIndex] === null) {
-      throw new Error(`参数 ${parameterIndex} 是必需的`);
-    }
-    return method.apply(this, args);
-  };
-}
-
-class UserService {
-  login(username: string, @required password: string) {
-    // 登录逻辑
-    return `登录: ${username}, ${password}`;
-  }
-}
-
-const userService = new UserService();
-console.log(userService.login("admin", "123456")); // 正常工作
-// userService.login("admin", null); // 抛出错误: 参数 1 是必需的
-```
-
-## 21.7 装饰器执行顺序
-
-多个装饰器同时应用于一个声明时，它们的执行顺序如下：
-
-1. 从上到下计算装饰器表达式
-2. 得到的结果会从下到上调用
+1. 从上到下依次对装饰器表达式求值
+2. 求值的结果会被当作函数，从下到上依次调用
 
 ```typescript
 function first() {
-  console.log("first(): 计算装饰器表达式");
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    console.log("first(): 调用装饰器函数");
+  console.log("first(): 装饰器工厂");
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("first(): 装饰器调用");
   };
 }
 
 function second() {
-  console.log("second(): 计算装饰器表达式");
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    console.log("second(): 调用装饰器函数");
+  console.log("second(): 装饰器工厂");
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("second(): 装饰器调用");
   };
 }
 
@@ -7904,282 +7873,427 @@ class ExampleClass {
 }
 
 // 输出:
-// first(): 计算装饰器表达式
-// second(): 计算装饰器表达式
-// second(): 调用装饰器函数
-// first(): 调用装饰器函数
+// first(): 装饰器工厂
+// second(): 装饰器工厂
+// second(): 装饰器调用
+// first(): 装饰器调用
 ```
 
-对于类中不同成员上的装饰器的执行顺序是：
+## 21.5 实际应用场景
 
-1. 参数装饰器，然后方法装饰器，然后访问器或属性装饰器应用于实例成员
-2. 参数装饰器，然后方法装饰器，然后访问器或属性装饰器应用于静态成员
-3. 类装饰器
+### 21.5.1 依赖注入
 
-## 21.8 实际应用场景
-
-### 21.8.1 依赖注入
+装饰器可用于实现依赖注入系统，如 Angular、NestJS 等框架中的用法。
 
 ```typescript
-// 简单的依赖注入实现
-const serviceSymbol = Symbol("services");
+// 简化版的依赖注入系统
+const dependenciesRegistry = new Map<any, any[]>();
 
 // 服务装饰器
 function Service() {
-  return function(constructor: Function) {
-    Reflect.defineMetadata("isService", true, constructor);
+  return function<T extends new (...args: any[]) => {}>(constructor: T) {
+    // 注册服务
+    console.log(`服务 ${constructor.name} 已注册`);
+    return constructor;
   };
 }
 
 // 注入装饰器
-function Inject(serviceName: string) {
-  return function(target: any, propertyKey: string) {
-    const services = Reflect.getOwnMetadata(serviceSymbol, target) || {};
-    services[propertyKey] = serviceName;
-    Reflect.defineMetadata(serviceSymbol, services, target);
+function Inject(service: any) {
+  return function(target: any, propertyKey: string | symbol) {
+    const existingInjections = dependenciesRegistry.get(target.constructor) || [];
+    dependenciesRegistry.set(target.constructor, [
+      ...existingInjections,
+      { propertyKey, service }
+    ]);
   };
 }
 
+// 服务类
 @Service()
 class UserService {
-  getUserDetails(id: string) {
-    return { id, name: "User" + id };
+  getUsers() {
+    return ["User1", "User2"];
   }
 }
 
 @Service()
 class ProductService {
-  getProductDetails(id: string) {
-    return { id, name: "Product" + id };
+  getProducts() {
+    return ["Product1", "Product2"];
   }
 }
 
-class AppController {
-  @Inject("UserService")
+// 使用服务的控制器
+@Service()
+class UserController {
+  @Inject(UserService)
   private userService: UserService;
   
-  @Inject("ProductService")
+  @Inject(ProductService)
   private productService: ProductService;
   
-  getUserProduct(userId: string, productId: string) {
-    const user = this.userService.getUserDetails(userId);
-    const product = this.productService.getProductDetails(productId);
-    return { user, product };
-  }
-}
-```
-
-### 21.8.2 路由和中间件
-
-```typescript
-// 简单的路由装饰器
-function Route(path: string) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    if (!target.routes) {
-      target.routes = [];
-    }
-    
-    target.routes.push({
-      path,
-      method: propertyKey,
-      handler: descriptor.value
-    });
-  };
-}
-
-// 中间件装饰器
-function Use(middleware: Function) {
-  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    if (!target.middlewares) {
-      target.middlewares = {};
-    }
-    
-    if (!target.middlewares[propertyKey]) {
-      target.middlewares[propertyKey] = [];
-    }
-    
-    target.middlewares[propertyKey].push(middleware);
-  };
-}
-
-// 权限检查中间件
-function checkAdmin(req: any, res: any, next: Function) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).send('禁止访问');
-  }
-  next();
-}
-
-class UserController {
-  @Route('/users')
-  getUsers(req: any, res: any) {
-    res.send('返回所有用户');
-  }
-  
-  @Route('/users/admin')
-  @Use(checkAdmin)
-  getAdminPanel(req: any, res: any) {
-    res.send('管理员面板');
-  }
-}
-```
-
-### 21.8.3 ORM 和数据验证
-
-```typescript
-// 实体装饰器
-function Entity(tableName: string) {
-  return function(constructor: Function) {
-    constructor.prototype.tableName = tableName;
-  };
-}
-
-// 列装饰器
-function Column(options: { type: string; primary?: boolean }) {
-  return function(target: any, propertyKey: string) {
-    if (!target.columns) {
-      target.columns = {};
-    }
-    
-    target.columns[propertyKey] = options;
-  };
-}
-
-// 验证装饰器
-function Length(min: number, max: number) {
-  return function(target: any, propertyKey: string) {
-    if (!target.validations) {
-      target.validations = {};
-    }
-    
-    if (!target.validations[propertyKey]) {
-      target.validations[propertyKey] = [];
-    }
-    
-    target.validations[propertyKey].push({
-      type: 'length',
-      min,
-      max,
-      validate: (value: string) => value.length >= min && value.length <= max
-    });
-  };
-}
-
-@Entity('users')
-class User {
-  @Column({ type: 'int', primary: true })
-  id: number;
-  
-  @Column({ type: 'varchar' })
-  @Length(3, 50)
-  name: string;
-  
-  @Column({ type: 'varchar' })
-  @Length(5, 100)
-  email: string;
-  
-  constructor(id: number, name: string, email: string) {
-    this.id = id;
-    this.name = name;
-    this.email = email;
-  }
-}
-```
-
-## 21.9 装饰器与反射元数据
-
-使用 `reflect-metadata` 库可以增强装饰器的功能，允许存储和检索元数据：
-
-```typescript
-// 安装: npm install reflect-metadata
-
-import "reflect-metadata";
-
-// 类型装饰器与元数据
-function Typed() {
-  return function(target: any, propertyKey: string) {
-    const type = Reflect.getMetadata("design:type", target, propertyKey);
-    console.log(`${propertyKey} 的类型是: ${type.name}`);
-  };
-}
-
-class Example {
-  @Typed()
-  name: string;
-  
-  @Typed()
-  age: number;
-}
-
-// 输出:
-// name 的类型是: String
-// age 的类型是: Number
-```
-
-## 21.10 装饰器的限制与最佳实践
-
-### 21.10.1 限制
-
-1. 装饰器是实验性功能，API 可能会在未来版本中改变
-2. 装饰器无法访问构造函数参数属性
-3. 装饰器在运行时执行，不是在编译时
-4. 方法装饰器不能改变方法的参数类型
-
-### 21.10.2 最佳实践
-
-1. 使用装饰器工厂提供自定义参数
-2. 保持装饰器的单一职责
-3. 使用反射元数据增强类型信息
-4. 避免在装饰器中产生副作用
-5. 为装饰器提供完善的类型定义和文档
-6. 在关键代码路径上进行性能测试，因为装饰器可能引入性能开销
-
-## 21.11 TypeScript 5.0+ 装饰器更新
-
-TypeScript 5.0 引入了新的装饰器标准，与旧版实验性装饰器有一些重要区别：
-
-```typescript
-// 新的类装饰器语法
-function logged(value: any, context: ClassDecoratorContext) {
-  if (context.kind === "class") {
-    return class extends value {
-      constructor(...args: any[]) {
-        super(...args);
-        console.log(`实例化类: ${context.name}`);
-      }
+  getUsersAndProducts() {
+    return {
+      users: this.userService.getUsers(),
+      products: this.productService.getProducts()
     };
   }
-  return value;
 }
 
-@logged
-class Person {
+// 手动处理依赖注入
+function initializeService<T>(Service: new (...args: any[]) => T): T {
+  const instance = new Service();
+  const injections = dependenciesRegistry.get(Service) || [];
+  
+  injections.forEach(({ propertyKey, service }) => {
+    (instance as any)[propertyKey] = new service();
+  });
+  
+  return instance;
+}
+
+// 使用
+const userController = initializeService(UserController);
+console.log(userController.getUsersAndProducts());
+```
+
+### 21.5.2 验证
+
+装饰器可以用于验证类属性和方法参数。
+
+```typescript
+// 简单的验证装饰器
+function Min(minValue: number) {
+  return function(target: any, propertyKey: string) {
+    // 获取属性描述符
+    let value: any;
+    
+    // 创建 getter 和 setter
+    Object.defineProperty(target, propertyKey, {
+      get() {
+        return value;
+      },
+      set(newValue: any) {
+        if (newValue < minValue) {
+          throw new Error(`${propertyKey} 不能小于 ${minValue}`);
+        }
+        value = newValue;
+      },
+      enumerable: true,
+      configurable: true
+    });
+  };
+}
+
+function MaxLength(maxLength: number) {
+  return function(target: any, propertyKey: string) {
+    // 获取属性描述符
+    let value: any;
+    
+    // 创建 getter 和 setter
+    Object.defineProperty(target, propertyKey, {
+      get() {
+        return value;
+      },
+      set(newValue: any) {
+        if (typeof newValue === 'string' && newValue.length > maxLength) {
+          throw new Error(`${propertyKey} 长度不能超过 ${maxLength} 个字符`);
+        }
+        value = newValue;
+      },
+      enumerable: true,
+      configurable: true
+    });
+  };
+}
+
+class User {
+  @MaxLength(10)
   name: string;
   
-  constructor(name: string) {
+  @Min(0)
+  age: number;
+  
+  constructor(name: string, age: number) {
     this.name = name;
+    this.age = age;
   }
 }
 
-// 新的方法装饰器语法
-function logged(originalMethod: any, context: ClassMethodDecoratorContext) {
-  if (context.kind === "method") {
-    return function(this: any, ...args: any[]) {
-      console.log(`调用方法: ${String(context.name)}`);
+try {
+  const user1 = new User("张三", 20); // 正常
+  console.log(user1);
+  
+  const user2 = new User("这个名字肯定超过了十个字符", 20); // 抛出错误
+} catch (error) {
+  console.error(error.message); // name 长度不能超过 10 个字符
+}
+
+try {
+  const user3 = new User("李四", -5); // 抛出错误
+} catch (error) {
+  console.error(error.message); // age 不能小于 0
+}
+```
+
+### 21.5.3 方法缓存
+
+使用装饰器实现方法结果的缓存：
+
+```typescript
+function Memoize() {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    const cache = new Map<string, any>();
+    
+    descriptor.value = function(...args: any[]) {
+      // 使用参数创建缓存键
+      const key = JSON.stringify(args);
+      
+      // 检查是否已缓存
+      if (cache.has(key)) {
+        console.log(`[缓存命中] ${propertyKey}(${key})`);
+        return cache.get(key);
+      }
+      
+      // 没有缓存，调用原方法
+      const result = originalMethod.apply(this, args);
+      cache.set(key, result);
+      console.log(`[缓存存储] ${propertyKey}(${key})`);
+      
+      return result;
+    };
+    
+    return descriptor;
+  };
+}
+
+class MathService {
+  @Memoize()
+  fibonacci(n: number): number {
+    console.log(`计算 fibonacci(${n})`);
+    if (n <= 1) return n;
+    return this.fibonacci(n - 1) + this.fibonacci(n - 2);
+  }
+}
+
+const math = new MathService();
+console.log(math.fibonacci(6)); // 首次计算
+console.log(math.fibonacci(6)); // 从缓存返回
+```
+
+### 21.5.4 权限控制
+
+使用装饰器实现方法的权限控制：
+
+```typescript
+// 权限枚举
+enum Role {
+  GUEST = 'guest',
+  USER = 'user',
+  ADMIN = 'admin'
+}
+
+// 权限检查装饰器
+function RequireRole(role: Role) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    
+    descriptor.value = function(...args: any[]) {
+      // 模拟获取当前用户角色
+      const currentUserRole = getCurrentUserRole();
+      
+      if (!hasPermission(currentUserRole, role)) {
+        throw new Error(`当前用户没有 ${role} 角色的权限`);
+      }
+      
       return originalMethod.apply(this, args);
     };
-  }
-  return originalMethod;
+    
+    return descriptor;
+  };
 }
 
-class Calculator {
-  @logged
-  add(a: number, b: number): number {
-    return a + b;
+// 模拟权限检查
+function hasPermission(userRole: Role, requiredRole: Role): boolean {
+  const roleHierarchy = {
+    [Role.ADMIN]: 3,
+    [Role.USER]: 2,
+    [Role.GUEST]: 1
+  };
+  
+  return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
+}
+
+// 模拟获取当前用户角色
+function getCurrentUserRole(): Role {
+  // 实际应用中，这可能来自用户会话或认证服务
+  return Role.USER;
+}
+
+class AdminPanel {
+  @RequireRole(Role.USER)
+  viewDashboard() {
+    return "仪表盘数据";
   }
+  
+  @RequireRole(Role.ADMIN)
+  deleteUser(userId: string) {
+    return `用户 ${userId} 已删除`;
+  }
+}
+
+const panel = new AdminPanel();
+
+try {
+  console.log(panel.viewDashboard()); // 成功，因为当前用户是 USER
+} catch (error) {
+  console.error(error.message);
+}
+
+try {
+  console.log(panel.deleteUser("123")); // 失败，因为需要 ADMIN 角色
+} catch (error) {
+  console.error(error.message); // 当前用户没有 admin 角色的权限
 }
 ```
 
-新的装饰器标准提供了更好的类型安全性和更灵活的应用方式。
+## 21.6 装饰器和元数据反射
 
-装饰器是 TypeScript 中非常强大的功能，能够帮助实现面向切面编程、依赖注入、元编程等高级概念。尽管仍在实验阶段，但已在多个主流框架中得到广泛应用，如 Angular、NestJS 和 TypeORM 等。
+结合 `reflect-metadata` 库，装饰器可以提供更强大的元数据程序设计能力。
+
+```typescript
+import 'reflect-metadata';
+
+// 自定义元数据键
+const API_METHOD_METADATA = 'api:method';
+const API_PATH_METADATA = 'api:path';
+
+// HTTP 方法装饰器
+function Get(path: string) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    Reflect.defineMetadata(API_METHOD_METADATA, 'GET', target, propertyKey);
+    Reflect.defineMetadata(API_PATH_METADATA, path, target, propertyKey);
+    return descriptor;
+  };
+}
+
+function Post(path: string) {
+  return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    Reflect.defineMetadata(API_METHOD_METADATA, 'POST', target, propertyKey);
+    Reflect.defineMetadata(API_PATH_METADATA, path, target, propertyKey);
+    return descriptor;
+  };
+}
+
+// 控制器装饰器
+function Controller(basePath: string) {
+  return function<T extends new (...args: any[]) => {}>(target: T) {
+    Reflect.defineMetadata('controller:base-path', basePath, target);
+    return target;
+  };
+}
+
+// API 控制器
+@Controller('/users')
+class UserController {
+  @Get('/')
+  getUsers() {
+    return { users: ['User1', 'User2'] };
+  }
+  
+  @Post('/')
+  createUser() {
+    return { status: 'created' };
+  }
+  
+  @Get('/:id')
+  getUserById() {
+    return { user: 'User1' };
+  }
+}
+
+// 路由扫描器（简化版）
+function scanControllers(controllers: any[]) {
+  const routes: { method: string; path: string; handler: Function }[] = [];
+  
+  for (const Controller of controllers) {
+    const basePath = Reflect.getMetadata('controller:base-path', Controller) || '';
+    const controller = new Controller();
+    
+    // 获取所有方法
+    const methodKeys = Object.getOwnPropertyNames(Controller.prototype).filter(
+      key => key !== 'constructor' && typeof controller[key] === 'function'
+    );
+    
+    for (const methodKey of methodKeys) {
+      const method = Reflect.getMetadata(API_METHOD_METADATA, Controller.prototype, methodKey);
+      const path = Reflect.getMetadata(API_PATH_METADATA, Controller.prototype, methodKey);
+      
+      if (method && path) {
+        routes.push({
+          method,
+          path: `${basePath}${path}`,
+          handler: controller[methodKey].bind(controller)
+        });
+      }
+    }
+  }
+  
+  return routes;
+}
+
+// 扫描路由
+const routes = scanControllers([UserController]);
+console.log(routes);
+// 输出类似:
+// [
+//   { method: 'GET', path: '/users/', handler: [Function] },
+//   { method: 'POST', path: '/users/', handler: [Function] },
+//   { method: 'GET', path: '/users/:id', handler: [Function] }
+// ]
+
+// 模拟请求处理
+function handleRequest(method: string, path: string) {
+  const route = routes.find(r => r.method === method && r.path === path);
+  if (route) {
+    console.log(`执行路由 ${method} ${path}`);
+    return route.handler();
+  }
+  return { error: 'Not Found' };
+}
+
+console.log(handleRequest('GET', '/users/')); // { users: ['User1', 'User2'] }
+console.log(handleRequest('POST', '/users/')); // { status: 'created' }
+```
+
+## 21.7 最佳实践
+
+1. **保持装饰器的专注性**：每个装饰器应该只做一件事，符合单一职责原则。
+
+2. **使用装饰器工厂**：通过装饰器工厂传递参数，而不是在装饰器中硬编码值。
+
+3. **考虑副作用**：装饰器会在类定义时执行，而不是在实例化时，注意这可能导致的副作用。
+
+4. **组合优于继承**：使用装饰器组合功能，通常比使用继承更灵活。
+
+5. **正确处理 `this` 上下文**：在装饰器中改变方法时，确保正确绑定 `this` 上下文。
+
+6. **文档化装饰器**：为你的装饰器提供良好的文档，说明它们的用途、参数和行为。
+
+7. **测试装饰器**：装饰器应该和其他代码一样经过彻底测试，尤其是边界情况。
+
+## 21.8 装饰器的限制
+
+1. **实验性特性**：装饰器在 TypeScript 中仍是一个实验性特性，API 可能会在未来版本中改变。
+
+2. **执行顺序复杂性**：当多个装饰器组合使用时，执行顺序可能不直观。
+
+3. **调试困难**：装饰器可能使代码调试变得更加困难，因为它们在运行时修改行为。
+
+4. **元数据反射依赖**：许多高级装饰器模式依赖 `reflect-metadata` 库，增加了项目依赖。
+
+5. **浏览器兼容性**：使用装饰器可能需要额外的转译步骤和 polyfill 来支持所有目标浏览器。
+
+TypeScript 的装饰器是一个强大的工具，可以帮助我们编写更干净、更具表达力的代码。通过装饰器，我们可以以非侵入式的方式向类和类成员添加功能，实现关注点分离，提高代码的可维护性。
