@@ -1888,7 +1888,7 @@ type T1 = typeof x; // 42
 ```typescript
 // 基本类型会推断为类型
 const num = 123;
-type NumType = typeof num; // number，而不是 123
+type NumType = typeof num; // 123
 
 // 字符串字面量会保留字面量类型
 const str = "hello";
