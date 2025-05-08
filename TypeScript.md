@@ -1877,7 +1877,7 @@ function reducer(state: State = initialState, action: Action): State {
 ```typescript
 // 可以推断已定义变量的类型
 const x = 42;
-type T1 = typeof x; // number
+type T1 = typeof x; // 42
 
 // 不能用于直接推断值的类型
 // type T2 = typeof 42; // 语法错误
