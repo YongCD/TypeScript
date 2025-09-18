@@ -128,7 +128,7 @@ export {}
   3. function
 ## 枚举类型 (enum)  
 >枚举允许开发者定义一组命名常量，使代码更具可读性和可维护性。
-  
+
   ```typescript
   // 数字枚举 - 默认从0开始自动递增
   enum Direction {
@@ -2798,7 +2798,7 @@ class Temperature {
   // 计算属性的getter
   get fahrenheit(): number {
     return this._celsius * 9 / 5 + 32;
-  }
+  } 
   
   // 计算属性的setter
   set fahrenheit(value: number) {
