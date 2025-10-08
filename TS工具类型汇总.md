@@ -9,7 +9,7 @@ type Result = Exclude<T, U>; // boolean
 
 # 2 Extract<T, U>
 - Extract<T, U> 从类型 T 中提取可以赋值给 U 的类型。
-- 和 Extract 正好相反，也是用于处理联合类型
+- 和 Exclude 正好相反，也是用于处理联合类型
 ```typescript
 type T = string | number | boolean;
 type U = string | number;
