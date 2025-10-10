@@ -9297,6 +9297,7 @@ console.log(creds.username); // 输出: "johndoe123"
 属性装饰器是一个函数，它只接收两个参数：
 
 **语法**：
+
 ```typescript
 class MyClass {
   @MyPropertyDecorator
@@ -9659,7 +9660,199 @@ class UserController {
 *   **唯一用途**: **为参数注册元数据**。
 *   **协作性**: 几乎总是与**方法装饰器**或**类装饰器**配合使用。参数装饰器是“信息提供者”，而其他装饰器是“信息消费者和执行者”。
 
-# 29 reflect-metadata 讲解
+# 29 装饰器执行流程讲解
+
+这是一个非常重要的话题，理解装饰器的执行流程是精通 TypeScript 元编程的关键。装饰器的执行顺序遵循一套严格且明确的规则，一旦掌握，就会觉得非常清晰。
+
+我们将分两部分来讲解：
+
+1.  **单个类中不同装饰器的执行顺序**。
+2.  **同一个目标上多个装饰器的执行顺序**。
+
+### **黄金法则：定义时执行，而非运行时**
+
+首先，必须牢记最重要的一条规则：**所有装饰器都在类被定义时立即执行，而不是在创建类的实例或调用方法时执行。**
+
+可以把类定义的过程想象成蓝图绘制。装饰器是在你**绘制蓝图**时运行的工具，它们修改和标注蓝图本身。当你用这个蓝图去**建造房子**（`new MyClass()`）时，装饰器已经完成了它们的工作。
+
+---
+
+### **第一部分：单个类中不同装饰器的执行顺序**
+
+在一个类中，装饰器的执行顺序遵循以下自下而上的规则：
+
+1.  **实例成员**：先执行所有实例成员（属性、访问器、方法、参数）上的装饰器。
+2.  **静态成员**：然后执行所有静态成员（属性、访问器、方法、参数）上的装饰器。
+3.  **构造函数**：接着执行构造函数参数上的装饰器。
+4.  **类**：最后执行类装饰器。
+
+在**每个层级内部**（例如，在所有实例成员中），执行顺序**没有明确保证**，但通常是按照它们在代码中出现的顺序。然而，**方法参数装饰器总是在其所属的方法装饰器之前执行**。
+
+#### **综合示例**
+
+让我们用一个包含所有类型装饰器的复杂例子来彻底搞清楚这个流程。我们将使用装饰器工厂来打印“评估时”（Evaluation）和“执行时”（Execution）的日志。
+
+```typescript
+// 一个通用的装饰器工厂，用于打印日志
+function log(decoratorName: string, targetType: string) {
+  console.log(`[评估] ${decoratorName} on ${targetType}`); // 评估阶段
+  return function () {
+    console.log(`[执行] ${decoratorName} on ${targetType}`); // 执行阶段
+  };
+}
+
+@log('Class', 'Top Level')
+class OrderDemo {
+  
+  @log('Property', 'Instance')
+  instanceProp: string;
+
+  @log('Accessor', 'Instance')
+  get instanceAccessor() { return 'value'; }
+  
+  @log('Method', 'Instance')
+  instanceMethod(@log('Parameter', 'Instance Method') param: any) {}
+
+  @log('Property', 'Static')
+  static staticProp: string;
+
+  @log('Accessor', 'Static')
+  static get staticAccessor() { return 'value'; }
+  
+  @log('Method', 'Static')
+  static staticMethod(@log('Parameter', 'Static Method') param: any) {}
+
+  constructor(@log('Parameter', 'Constructor') param: any) {}
+}
+```
+
+#### **预测与分析执行结果**
+
+当你运行这段代码时（不需要实例化 `OrderDemo`），控制台会输出以下内容。我们来一步步分析：
+
+**阶段一：评估所有装饰器工厂（自上而下）**
+
+JavaScript 会首先从上到下读取代码，并执行装饰器工厂函数。
+
+```
+[评估] Class on Top Level
+[评估] Property on Instance
+[评估] Accessor on Instance
+[评估] Method on Instance
+[评估] Parameter on Instance Method
+[评估] Property on Static
+[评估] Accessor on Static
+[评估] Method on Static
+[评估] Parameter on Static Method
+[评估] Parameter on Constructor
+```
+
+**注意**：这个阶段只是调用了最外层的工厂函数（例如 `log(...)`），并返回了真正的装饰器函数。真正的装饰器逻辑还没有执行。
+
+**阶段二：执行所有装饰器（遵循严格顺序）**
+
+现在，TypeScript 开始按照我们上面提到的规则，依次调用工厂返回的装饰器函数。
+
+**1. 实例成员**
+
+```
+[执行] Property on Instance
+[执行] Accessor on Instance
+[执行] Parameter on Instance Method  // <-- 参数装饰器先于其方法
+[执行] Method on Instance
+```
+
+*   首先处理所有实例相关的成员。
+*   在 `instanceMethod` 中，其**参数装饰器**会先于**方法装饰器**执行。
+
+**2. 静态成员**
+
+```
+[执行] Property on Static
+[执行] Accessor on Static
+[执行] Parameter on Static Method  // <-- 参数装饰器先于其方法
+[执行] Method on Static
+```
+
+*   处理完实例成员后，接着处理所有静态成员。
+*   同样，`staticMethod` 的参数装饰器也先于方法本身执行。
+
+**3. 构造函数参数**
+
+```
+[执行] Parameter on Constructor
+```
+
+*   处理完所有成员后，轮到构造函数的参数。
+
+**4. 类**
+
+```
+[执行] Class on Top Level
+```
+
+*   最后，在所有内部的一切都处理完毕后，才执行类装饰器。
+
+---
+
+### **第二部分：同一个目标上多个装饰器的执行顺序**
+
+当同一个目标（例如一个方法）上有多个装饰器时，规则如下：
+
+*   **评估（Evaluation）**：装饰器工厂**从上到下**依次评估。
+*   **执行（Execution）**：装饰器函数**从下到上**依次执行。
+
+这就像函数调用栈（先进后出）。第一个被评估的装饰器，最后一个被执行。
+
+#### **示例**
+
+```typescript
+function FactoryA() {
+  console.log("Factory A: Evaluated");
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("Decorator A: Executed");
+  };
+}
+
+function FactoryB() {
+  console.log("Factory B: Evaluated");
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    console.log("Decorator B: Executed");
+  };
+}
+
+class MultipleDecorators {
+  @FactoryA()
+  @FactoryB()
+  method() {}
+}
+```
+
+#### **执行结果**
+
+```
+Factory A: Evaluated  // <-- A 先评估
+Factory B: Evaluated  // <-- B 后评估
+
+Decorator B: Executed  // <-- B 先执行
+Decorator A: Executed  // <-- A 后执行
+```
+
+*   `@FactoryA()` 在 `@FactoryB()` 的上面，所以它先被评估。
+*   但由于 `@FactoryB()` 更“贴近”方法定义，所以它返回的装饰器先执行。`B` 对方法进行包装后，`A` 再对 `B` 包装后的结果进行再次包装。
+
+### **总结：牢记四大规则**
+
+1.  **定义时机**：所有装饰器都在**类定义时**执行，且只执行一次。
+2.  **工厂评估**：装饰器工厂（如果使用）总是**自上而下**地评估。
+3.  **类内顺序**：
+    *   实例成员 (属性/访问器/参数/方法)
+    *   -> 静态成员 (属性/访问器/参数/方法)
+    *   -> 构造函数 (参数)
+    *   -> 类
+4.  **同目标顺序**：多个装饰器在同一个目标上，**由下至上**（由内向外）地执行。
+
+# 30 reflect-metadata 讲解
 
 让我们从头开始剖析 `reflect-metadata`。这是一个能够解锁 TypeScript 装饰器真正威力的库，但它的概念起初可能看起来有点抽象。
 
@@ -9849,3 +10042,476 @@ Reflect.defineMetadata("design:paramtypes", [Number, String], Point);
 | **`emitDecoratorMetadata`** | 一个 TypeScript 编译器选项。          | 一个会自动为你写下所有基本类型标签的助手。 |
 
 它们共同协作，使你能够构建强大、声明式的系统。在这种系统中，你用简单的装饰器标签（`@Required`, `@Injectable`）来定义行为，然后让通用的函数或框架通过读取这些元数据来处理复杂的逻辑。
+
+# 31 反射元数据是什么？
+
+这是一个非常核心的概念，我们用最简单、最直观的方式，一步步把它彻底讲清楚。
+
+### **第一步：忘掉代码，先看一个生活中的例子**
+
+想象一下，你正在搬家，打包了很多箱子。
+
+*   **箱子里的东西**：这就是你的**代码**，比如一个函数、一个类。
+*   **你在箱子上贴的标签**：比如你写上“厨房用品 - 易碎”、“卧室衣物 - 冬季”。
+
+这个**标签**就是**元数据 (Metadata)**。
+
+现在，思考一下这个标签有什么用：
+1.  它**没有改变**箱子里的东西。
+2.  它为你提供了**关于**箱子里东西的**额外信息**。
+3.  最重要的是，你**不需要打开箱子**，只要**看一眼标签**，就能知道这个箱子该怎么处理（比如轻拿轻放，或者直接搬到卧室）。
+
+**“看标签”** 这个动作，就是**反射 (Reflection)**。
+
+所以，我们可以得到一个非常简单的定义：
+
+*   **元数据 (Metadata)**：**关于数据的数据**。在编程里，就是**关于代码的额外信息**。（箱子上的标签）
+*   **反射 (Reflection)**：在程序**运行时**，去**读取和使用这些额外信息**的能力。（看标签的动作）
+
+---
+
+### **第二步：为什么编程需要这个东西？**
+
+现在我们回到代码。在 TypeScript 中，你写下这样的代码：
+
+```typescript
+class User {
+  email: string; // 我们告诉 TypeScript，email 应该是一个字符串
+}
+```
+
+问题来了：当这段代码被编译成 JavaScript 并在浏览器或 Node.js 中运行时，`: string` 这个类型信息**会丢失**！JavaScript 本身没有静态类型的概念。
+
+这就好比你的箱子在运输过程中，标签被撕掉了。你收到一堆一模一样的箱子，完全不知道哪个该放哪儿，哪个是易碎品。
+
+这时候，你就会想：“要是我有一种方法，能把‘这个属性是字符串类型’这个标签牢牢地贴在 `email` 属性上，并且在程序跑起来之后还能随时查看这个标签，那该多好啊！”
+
+**`Reflect-Metadata` 就是帮你实现这个愿望的工具。**
+
+---
+
+### **第三步：`Reflect-Metadata` 是什么？怎么用？**
+
+它是一个专门用来“贴标签”和“读标签”的工具库。
+
+#### **核心功能就两个：**
+
+1.  **贴标签**：`Reflect.defineMetadata(...)`
+2.  **读标签**：`Reflect.getMetadata(...)`
+
+为了使用它，你需要做三件事：
+
+1.  **安装它**：
+    ```bash
+    npm install reflect-metadata
+    ```
+
+2.  **在项目入口文件顶部导入一次** (这一步是激活它的能力)：
+    ```typescript
+    // 在你的 index.ts 或 main.ts 文件的最上面
+    import "reflect-metadata";
+    ```
+
+3.  **在 `tsconfig.json` 中打开开关**：
+    ```json
+    {
+      "compilerOptions": {
+        "experimentalDecorators": true, // 启用装饰器
+        "emitDecoratorMetadata": true    // 启用元数据功能
+      }
+    }
+    ```
+
+#### **动手实践：手动贴标签和读标签**
+
+让我们手动给一个类的属性贴上“验证规则”的标签。
+
+```typescript
+import "reflect-metadata";
+
+class User {
+  email: string;
+}
+
+const user = new User();
+
+// 1. 贴标签 (定义元数据)
+//    - "validate" 是标签的名字 (key)
+//    - "email-format" 是标签的内容 (value)
+//    - user 是贴在哪儿的对象
+//    - "email" 是贴在对象的哪个属性上
+Reflect.defineMetadata("validate", "email-format", user, "email");
+
+// 2. 读标签 (获取元数据)
+const rule = Reflect.getMetadata("validate", user, "email");
+
+console.log(rule); // 输出: "email-format"
+```
+
+看到这里，你应该明白了：`Reflect-Metadata` 就是一个让你能把任意信息（元数据）附加到对象的属性上的工具。
+
+---
+
+### **第四步：让过程自动化——装饰器登场**
+
+每次都手动调用 `Reflect.defineMetadata` 太麻烦了。我们能不能让这个“贴标签”的动作更优雅、更自动化？
+
+**当然可以！这正是装饰器的完美用武之地！**
+
+装饰器就像一个自动化的“贴标签机”。
+
+让我们把上面的例子改写成用装饰器实现：
+
+```typescript
+import "reflect-metadata";
+
+// 1. 创建一个“贴标签机”（装饰器）
+function ValidateRule(rule: string) {
+  return function(target: any, propertyKey: string) {
+    console.log(`正在为 ${propertyKey} 贴上 '${rule}' 的标签...`);
+    Reflect.defineMetadata("validate", rule, target, propertyKey);
+  }
+}
+
+// 2. 使用“贴标签机”
+class User {
+  @ValidateRule("email-format") // 自动为 email 属性贴上标签
+  email: string;
+
+  @ValidateRule("min-length:8") // 自动为 password 属性贴上标签
+  password: string;
+}
+
+// 3. 验证一下标签是否贴上了
+const userPrototype = User.prototype;
+const emailRule = Reflect.getMetadata("validate", userPrototype, "email");
+const passwordRule = Reflect.getMetadata("validate", userPrototype, "password");
+
+console.log(`email 的验证规则是: ${emailRule}`);     // 输出: email 的验证规则是: email-format
+console.log(`password 的验证规则是: ${passwordRule}`); // 输出: password 的验证规则是: min-length:8
+```
+
+现在，整个流程就非常清晰了：
+*   我们创建了一个装饰器 `@ValidateRule`。
+*   它的唯一工作就是在类被定义的时候，自动调用 `Reflect.defineMetadata` 来“贴标签”。
+
+---
+
+### **第五步：终极魔法——自动获取类型信息**
+
+还记得我们一开始说的“TypeScript 的类型信息在运行时会丢失”吗？
+
+当你打开 `tsconfig.json` 里的 `"emitDecoratorMetadata": true` 开关后，TypeScript 会和 `Reflect-Metadata` 联手施展一个魔法：
+
+**如果一个属性/参数有装饰器，TypeScript 会自动帮你把它声明的类型信息作为元数据贴上去！**
+
+它使用的标签名（key）是固定的：
+*   `design:type` (用于属性类型)
+*   `design:paramtypes` (用于构造函数或方法的参数类型)
+
+看例子：
+
+```typescript
+import "reflect-metadata";
+
+function LogType(target: any, propertyKey: string) {
+  // 这个装饰器什么都不用做，它的存在只是为了触发 TypeScript 的魔法
+}
+
+class Employee {
+  @LogType
+  name: string; // 类型是 string
+
+  @LogType
+  salary: number; // 类型是 number
+
+  @LogType
+  hireDate: Date; // 类型是 Date
+}
+
+// 现在，我们来读取 TypeScript 自动贴上的标签
+const empPrototype = Employee.prototype;
+const nameType = Reflect.getMetadata("design:type", empPrototype, "name");
+const salaryType = Reflect.getMetadata("design:type", empPrototype, "salary");
+const hireDateType = Reflect.getMetadata("design:type", empPrototype, "hireDate");
+
+console.log(`name 属性的类型是: ${nameType.name}`);       // 输出: name 属性的类型是: String
+console.log(`salary 属性的类型是: ${salaryType.name}`);  // 输出: salary 属性的类型是: Number
+console.log(`hireDate 属性的类型是: ${hireDateType.name}`); // 输出: hireDate 属性的类型是: Date
+```
+
+**这就是反射元数据的终极目的**：它弥补了 JavaScript 运行时丢失类型信息的缺陷，让我们可以编写出更智能、更通用的代码（比如自动验证、依赖注入框架等）。
+
+### **总结**
+
+1.  **元数据**是“关于代码的额外信息”（标签）。
+2.  **反射**是在程序运行时去“读取这些信息”的动作。
+3.  **`reflect-metadata`** 是一个实现了这套机制的工具库。
+4.  **装饰器**是使用这个工具库来自动化“贴标签”的最佳方式。
+5.  **`emitDecoratorMetadata`** 是 TypeScript 的一个超能力，它能自动把**类型信息**作为元数据贴上，为实现依赖注入等高级功能提供了基础。
+
+# 32 reflect-metadata 库内置的一个装饰器工厂
+
+是的，你说得完全正确！这是一个非常棒的观察，也是 `reflect-metadata` 库提供的一个极其方便的**内置快捷方式**。
+
+你看到的 `@Reflect.metadata('key', 'value')` 实际上就是 `reflect-metadata` 库自己提供的一个**装饰器工厂**。
+
+让我们来对比一下，你就彻底明白了。
+
+---
+
+### **方法一：我们自己手动创建装饰器工厂（之前的做法）**
+
+假设我们想创建一个 `@Rule('required')` 装饰器来附加验证规则。
+
+我们需要这么写：
+
+1.  **定义一个装饰器工厂 `Rule`**
+    ```typescript
+    import "reflect-metadata";
+    
+    function Rule(ruleName: string) {
+      // 1. 这是一个工厂，它返回一个真正的装饰器函数
+      return function(target: any, propertyKey: string) {
+        // 2. 在装饰器函数内部，我们手动调用 Reflect.defineMetadata
+        Reflect.defineMetadata('rule', ruleName, target, propertyKey);
+      }
+    }
+    ```
+
+2.  **使用它**
+    ```typescript
+    class User {
+      @Rule('required')
+      name: string;
+    }
+    ```
+
+**分析**：你看，为了仅仅是附加一个元数据，我们就需要写一个完整的工厂函数 `Rule`。如果我还想附加另一个元数据，比如 `@MaxLength(10)`，我就得再写一个新的工厂函数。这有点繁琐。
+
+---
+
+### **方法二：使用库提供的快捷方式 `@Reflect.metadata(...)`**
+
+`reflect-metadata` 的作者早就想到了这个问题，于是他们直接在库里内置了一个通用的装饰器工厂，就叫做 `Reflect.metadata`。
+
+1.  **直接使用，无需自己定义**
+    ```typescript
+    import "reflect-metadata";
+    
+    class User {
+      // 直接调用 Reflect.metadata，它会返回一个装饰器并应用到 name 属性上
+      @Reflect.metadata('rule', 'required')
+      name: string;
+    }
+    ```
+
+**分析**：代码是不是一下子就简洁了很多？我们不需要再为每一种元数据都去创建一个新的装饰器工厂了。`@Reflect.metadata(key, value)` 帮我们完成了所有工作。
+
+### **`@Reflect.metadata` 的工作原理**
+
+你可以把 `Reflect.metadata` 的内部实现想象成下面这个样子（这是简化版）：
+
+```typescript
+// 这是 reflect-metadata 库内部帮你写好的代码（概念性）
+namespace Reflect {
+  export function metadata(metadataKey: any, metadataValue: any) {
+    // 1. 它本身就是一个装饰器工厂
+    return function(target: any, propertyKey?: string | symbol) {
+      // 2. 它返回的装饰器会自动帮你调用 defineMetadata
+      Reflect.defineMetadata(metadataKey, metadataValue, target, propertyKey);
+    }
+  }
+}
+```
+所以，当你写下 `@Reflect.metadata('rule', 'required')` 时，你实际上是在调用这个内置的工厂，它会立即返回一个装饰器函数，这个函数的工作就是帮你把 `'rule'` 和 `'required'` 这对键值附加到目标上。
+
+### **它可以应用在任何地方吗？**
+
+是的！这个快捷方式和普通的装饰器一样，可以应用在所有支持装饰器的地方。
+
+#### **示例：在类、方法、属性上使用**
+
+```typescript
+import "reflect-metadata";
+
+// 应用在类上
+@Reflect.metadata('info', 'This is a User model class')
+class User {
+
+  // 应用在属性上
+  @Reflect.metadata('rule', 'required')
+  name: string;
+
+  // 应用在方法上
+  @Reflect.metadata('http-method', 'GET')
+  @Reflect.metadata('path', '/users')
+  getUsers() {
+    // ...
+  }
+}
+
+// --- 读取元数据 ---
+
+// 读取类的元数据
+const classInfo = Reflect.getMetadata('info', User);
+console.log(`Class Info: ${classInfo}`); // -> Class Info: This is a User model class
+
+// 读取属性的元数据
+const nameRule = Reflect.getMetadata('rule', User.prototype, 'name');
+console.log(`Name Rule: ${nameRule}`); // -> Name Rule: required
+
+// 读取方法的元数据
+const httpMethod = Reflect.getMetadata('http-method', User.prototype, 'getUsers');
+const path = Reflect.getMetadata('path', User.prototype, 'getUsers');
+console.log(`Method: ${httpMethod}, Path: ${path}`); // -> Method: GET, Path: /users
+````
+
+### **总结：何时使用哪种方式？**
+
+| 方式                                            | 优点                   | 缺点                     | 适用场景                                                     |
+| :---------------------------------------------- | :--------------------- | :----------------------- | :----------------------------------------------------------- |
+| **自定义装饰器工厂**<br/>`function MyRule(...)` | **功能强大，逻辑灵活** | 代码量稍多，有样板代码   | 当你**不仅要附加元数据，还需要执行其他逻辑时**。例如，你想在装饰器里做一些检查、修改方法、或者组合多个操作。 |
+| **内置快捷方式**<br/>`@Reflect.metadata(...)`   | **极其简洁，开箱即用** | 功能单一，只能附加元数据 | 当你的**唯一目的就是附加一个简单的键值对元数据时**。这是绝大多数场景下的首选，能让代码非常干净和声明式。 |
+
+所以，你的观察非常准确，`@Reflect.metadata(...)` 是定义元数据更常用、更便捷的方式。
+
+# 33 Reflect.getMetadata 会沿着原型链向上查找
+
+你说得太对了！这绝对是 `Reflect.getMetadata` 最关键也是最强大的一个特性。忽略了这一点，就无法真正理解它的工作模式，尤其是在处理继承关系的类时。
+
+我们来把这一块彻底讲透。
+
+### **金科玉律：`getMetadata` vs `getOwnMetadata`**
+
+首先，`reflect-metadata` 库提供了两个“读取器”，它们唯一的区别就在于你提到的这一点：
+
+1.  `Reflect.getMetadata(key, target, [propKey])`: **会沿着原型链向上查找**。如果在当前 `target` 上找不到，它会去 `target.__proto__` 上找，再找不到就去 `target.__proto__.__proto__`，直到找到或者到达原型链的顶端 (`Object.prototype`) 为止。
+
+2.  `Reflect.getOwnMetadata(key, target, [propKey])`: **只查找当前 `target` 对象本身**，绝对不会去原型链上查找。
+
+理解了这个核心区别，我们再来看它为什么这么设计，以及在实践中意味着什么。
+
+---
+
+### **第一步：快速回顾 JavaScript 的原型链**
+
+要理解 `getMetadata` 的行为，必须先理解 JavaScript 的原型继承。
+
+```javascript
+class Animal {
+  eat() {
+    console.log('eating...');
+  }
+}
+
+class Dog extends Animal {
+  bark() {
+    console.log('barking...');
+  }
+}
+
+const bingo = new Dog();
+```
+
+当我们调用 `bingo.eat()` 时，发生了什么？
+1.  JavaScript 引擎在 `bingo` 实例本身上查找 `eat` 方法，没找到。
+2.  引擎接着去 `bingo` 的原型，也就是 `Dog.prototype` 上查找，还是没找到。
+3.  引擎继续去 `Dog.prototype` 的原型，也就是 `Animal.prototype` 上查找，**找到了**！于是执行它。
+
+这个查找路径 `bingo` -> `Dog.prototype` -> `Animal.prototype` 就是**原型链**。
+
+**`Reflect.getMetadata` 的查找行为完美地模仿了 JavaScript 引擎的这个过程。**
+
+---
+
+### **第二步：装饰器把元数据附加在哪里？**
+
+这是一个关键问题。当我们给一个**实例方法**或**实例属性**添加装饰器时，元数据被附加到了哪里？是实例上吗？
+
+**不是！**
+
+因为装饰器是在**类定义时**执行的，那时候还没有任何实例（比如 `bingo`）存在。所以，元数据只能被附加到**类的原型 (`prototype`)** 上。
+
+```typescript
+import "reflect-metadata";
+
+function log(target: any, propertyKey: string) {
+  Reflect.defineMetadata('log', `Method ${propertyKey} was logged`, target, propertyKey);
+}
+
+class Animal {
+  @log
+  eat() {}
+}
+
+class Dog extends Animal {
+  @log
+  bark() {}
+}
+```
+*   `@log` on `eat` 会把元数据附加到 `Animal.prototype` 上。
+*   `@log` on `bark` 会把元数据附加到 `Dog.prototype` 上。
+
+---
+
+### **第三步：`getMetadata` 的神奇之处（原型链查找）**
+
+现在，我们有了实例 `bingo`，让我们来读取元数据。
+
+```typescript
+const bingo = new Dog();
+
+// 场景 A: 读取 'bark' 方法的元数据
+// 查找路径: bingo (没有) -> Dog.prototype (找到了!)
+const barkLog = Reflect.getMetadata('log', bingo, 'bark');
+console.log(barkLog); // 输出: "Method bark was logged"
+
+// 场景 B: 读取 'eat' 方法的元数据 (最神奇的部分!)
+// 查找路径: bingo (没有) -> Dog.prototype (没有) -> Animal.prototype (找到了!)
+const eatLog = Reflect.getMetadata('log', bingo, 'eat');
+console.log(eatLog); // 输出: "Method eat was logged"
+```
+**结论**：`getMetadata` 的行为非常符合直觉。因为 `bingo` 继承了 `eat` 方法，所以它也应该能“继承”附加在 `eat` 方法上的元数据。这使得我们可以轻松地获取到一个对象**所有可见成员**（包括从父类继承的）的元数据。
+
+---
+
+### **第四步：`getOwnMetadata` 的精确性（只看自己）**
+
+现在，我们换成 `getOwnMetadata` 再试一次，看看有什么不同。
+
+```typescript
+const bingo = new Dog();
+
+// 场景 C: 尝试从 bingo 实例上直接读取 'bark' 的元数据
+// 查找路径: bingo (没有, 查找结束)
+const ownBarkLog = Reflect.getOwnMetadata('log', bingo, 'bark');
+console.log(ownBarkLog); // 输出: undefined
+// 解释：因为元数据在 Dog.prototype 上，而不在 bingo 实例上。
+
+// 场景 D: 明确地从 Dog.prototype 上读取
+// 查找路径: Dog.prototype (找到了!)
+const prototypeBarkLog = Reflect.getOwnMetadata('log', Dog.prototype, 'bark');
+console.log(prototypeBarkLog); // 输出: "Method bark was logged"
+
+// 场景 E: 尝试从 Dog.prototype 上读取 'eat' 的元数据
+// 查找路径: Dog.prototype (没有, 查找结束)
+const prototypeEatLog = Reflect.getOwnMetadata('log', Dog.prototype, 'eat');
+console.log(prototypeEatLog); // 输出: undefined
+// 解释：因为 'eat' 的元数据在 Animal.prototype 上，而不在 Dog.prototype 上。
+```
+**结论**：`getOwnMetadata` 更加精确和严格。它只告诉你这个元数据是不是**直接定义**在当前目标对象上的，完全不关心继承关系。
+
+### **总结与应用场景**
+
+| 方法                         | 查找行为               | 核心问题                                           | 适用场景                                                     |
+| :--------------------------- | :--------------------- | :------------------------------------------------- | :----------------------------------------------------------- |
+| **`Reflect.getMetadata`**    | **沿着原型链向上查找** | “这个对象（包括它的父类）是否**拥有**这个元数据？” | **通用场景**。当你需要获取一个对象所有可访问成员的元数据时，比如构建一个能处理继承的通用验证器或序列化器。 |
+| **`Reflect.getOwnMetadata`** | **只查找对象自身**     | “这个元数据是不是**直接定义**在这个对象上的？”     | **精确控制场景**。当你需要明确区分一个元数据是定义在子类还是父类上时，比如在框架中处理方法重写（override）的逻辑。 |
+
+**一个绝佳的比喻**：
+
+*   `Reflect.getMetadata`: 就像问你：“你会说中文吗？” 你会回答“会”，即使这是你从父母那里学来的（继承的）。
+*   `Reflect.getOwnMetadata`: 就像问你：“‘会说中文’这个特质是你自己发明的吗？” 你会回答“不是”，因为这是从你的父母那里继承来的。
+
+希望这个由浅入深的讲解能让你彻底明白它们之间的区别和设计哲学！

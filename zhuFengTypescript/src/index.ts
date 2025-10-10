@@ -1,40 +1,27 @@
-function propertyDecorator(target: any, propertyKey: string) {
-  // 在这里我们可以使用属性名称做一些事情
+import 'reflect-metadata'
 
-  // 创建一个新的属性，前缀为 _
-  const newKey = `_${propertyKey}`
-
-  // 通过重新定义属性，添加日志或校验
-  Object.defineProperty(target, propertyKey, {
-    get() {
-      console.log(`获取属性 ${propertyKey} 的值`)
-      return this[newKey]
-    },
-    set(value: any) {
-      console.log(`设置属性 ${propertyKey} 的值为 ${value}`)
-      this[newKey] = value
-    },
-    enumerable: true,
-    configurable: true,
-  })
+function Required(target: any, propertyKey: string) {
+  Reflect.defineMetadata('required', true, target, propertyKey)
 }
 
-class Product {
-  @propertyDecorator
-  price: number
-
-  constructor(price: number) {
-    this.price = price
+function validateRequired(target: any) {
+  console.log(target)
+  for (const key of Object.keys(target)) {
+    // 从实例的原型上获取元数据
+    const isRequired = Reflect.getMetadata('required', target, key)
+    if (isRequired && !target[key]) {
+      throw new Error(`Field ${key} is required`)
+    }
   }
 }
 
-const product = new Product(100)
-product.price = 200
-console.log('product', product)
-// 输出:
-// 设置属性 price 的值为 100
-// 设置属性 price 的值为 200
-// 获取属性 price 的值
-// 200
+class Person {
+  @Required
+  name: string
+  age: number
+}
+const person = new Person()
+person.name = '' // 设置为空字符串以触发验证错误
+validateRequired(person) // Throws error: Field name is required
 
 export {}
